@@ -99,7 +99,7 @@ If you find something wrong, please [open an issue](https://github.com/murphmar/
 
 ## Development
 
-You need Node.js 22 with pnpm 9, Python 3.11+ (for the backend tests), and `zip`.
+You need Node.js 22, Python 3.11+ (for the backend tests), and `zip`. Run `corepack enable` once so `pnpm` is the exact version pinned in `package.json` (pnpm 9, which Decky's tooling expects).
 
 ```sh
 pnpm install

@@ -68,4 +68,4 @@ sha256sum -c SHA256SUMS   # with SHA256SUMS from the same release
 
 ## Reporting a security problem
 
-Please don't open a public issue for a security problem. Use GitHub's **private vulnerability reporting** instead: open the repository's **Security** tab and choose **Report a vulnerability**. You'll get a reply within a week.
+Please don't open a public issue for a security problem. Use GitHub's **private vulnerability reporting** instead: open the repository's **Security** tab and choose **Report a vulnerability**.
