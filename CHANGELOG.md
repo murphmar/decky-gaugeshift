@@ -8,7 +8,7 @@ All notable changes to Gaugeshift are listed here.
 
 - **Match screen:** a device's resolution can now follow its own screen. Gaugeshift learns each device's screen size from what it reports when it streams, and assumes 1280x800 for a Steam Deck it hasn't heard from yet.
 - Screen sizes from earlier streams are read from Steam's logs at start-up. That covers devices that streamed before Gaugeshift was installed, or that are already connected when it starts.
-- **Forget this device…** in each device's menu, to remove a device and its saved rule and screen size.
+- **Forget this device…** at the bottom of each device's menu, to remove a device and its saved rule and screen size.
 - **New devices** setting: what a device gets the first time it streams. It defaults to **Match their screen**, so Gaugeshift works with no setup, and a new Steam Deck is covered from its very first launch.
 
 ### Changed

@@ -62,6 +62,12 @@ function CustomResolutionModal(props: {
   );
 }
 
+function forgetDescription(d: DeviceView): string {
+  return d.paired
+    ? `Gaugeshift forgets its rule and screen size. ${d.name} is paired with Steam Link, so it stays in the list (using the New devices setting) until you unpair it in Steam's Remote Play settings.`
+    : "Gaugeshift forgets its rule and screen size, and removes it from the list. If it streams again, it's treated as a new device.";
+}
+
 function statusText(v: ViewState): string {
   const session = v.config.session;
   if (!v.streamingTo) {
@@ -124,15 +130,12 @@ function Content({ engine }: { engine: Engine | null }) {
 
   const onPick = (name: string, rule: string, value: string) => {
     if (value === FORGET) {
-      const paired = view.devices.find((d) => d.name === name)?.paired;
+      const device = view.devices.find((d) => d.name === name);
+      if (!device) return;
       showModal(
         <ConfirmModal
           strTitle={`Forget ${name}?`}
-          strDescription={
-            paired
-              ? `Gaugeshift will forget its rule and screen size. ${name} is paired with Steam Link, so it stays in the list (using the New devices setting) until you unpair it in Steam's Remote Play settings.`
-              : `Gaugeshift will forget its rule and screen size, and remove it from this list. If it streams again, it's treated as a new device.`
-          }
+          strDescription={forgetDescription(device)}
           strOKButtonText="Forget"
           bDestructiveWarning
           onOK={() => engine.forgetDevice(name)}
