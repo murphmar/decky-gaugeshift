@@ -154,6 +154,8 @@ function Content({ engine }: { engine: Engine | null }) {
         {view.devices.map((d) => (
           <PanelSectionRow key={d.name}>
             <DropdownItem
+              layout="below"
+              menuLabel={`Resolution for ${d.name}`}
               label={d.name}
               description={d.streaming ? "Streaming now" : d.online ? "Online" : undefined}
               rgOptions={optionsFor(d.rule)}

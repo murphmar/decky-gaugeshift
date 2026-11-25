@@ -6,6 +6,10 @@ Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines th
 
 Like a train changing gauge at a border, your games re-fit themselves to whichever screen they're heading to.
 
+<p align="center">
+  <img src="docs/images/panel-streaming.png" width="380" alt="The Gaugeshift panel in the Quick Access Menu while an iPhone is streaming: Maximum Game Resolution is set to 1920x1200 and will be restored to 1920x1080 afterwards. Below, each device has its own resolution.">
+</p>
+
 ## Why
 
 Say your Steam Machine is plugged into a 4K TV. When you stream a game to a Steam Deck (a 16:10 screen) or a phone, the game still renders at the TV's resolution. Then the whole picture gets shrunk, letterboxed and squeezed down the network. That makes the machine work harder for a worse picture.

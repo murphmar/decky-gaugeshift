@@ -24,6 +24,7 @@ All notable changes to Gaugeshift are listed here.
 
 ### Fixed
 
+- Device dropdowns were too narrow to show the chosen resolution ("1920x1…"). They now sit under the device name at full width.
 - An error while updating the panel could stop Gaugeshift from handling any later event until it was restarted.
 - A log line Steam was still writing could be missed by the launch watcher.
 
