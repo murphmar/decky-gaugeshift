@@ -7,6 +7,6 @@ npx -y pnpm@9 install --frozen-lockfile >/dev/null
 npx -y pnpm@9 run build >/dev/null
 rm -rf out && mkdir -p "out/$NAME/dist"
 cp dist/index.js "out/$NAME/dist/"
-cp main.py plugin.json package.json LICENSE README.md "out/$NAME/"
+cp main.py plugin.json package.json LICENSE README.md CHANGELOG.md "out/$NAME/"
 (cd out && zip -qr "$NAME.zip" "$NAME")
 echo "out/$NAME.zip"

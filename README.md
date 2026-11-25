@@ -2,7 +2,7 @@
 
 **Per-device game resolution for Remote Play and Steam Link.**
 
-Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines that you stream *from*, such as a Steam Machine or a Steam Deck sitting in its dock. When a device starts streaming from it, Gaugeshift changes Steam's **Maximum Game Resolution** to the size you picked for that device. When the device disconnects, Gaugeshift puts the setting back to whatever it was before.
+Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines that you stream _from_, such as a Steam Machine or a Steam Deck sitting in its dock. When a device starts streaming from it, Gaugeshift changes Steam's **Maximum Game Resolution** to the size you picked for that device. When the device disconnects, Gaugeshift puts the setting back to whatever it was before.
 
 Like a train changing gauge at a border, your games re-fit themselves to whichever screen they're heading to.
 
@@ -48,26 +48,49 @@ Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a 
 
 - **Games read the setting when they launch.** If a game is already running when a device connects, it keeps its current resolution until you restart it.
 - **Per-game overrides win.** If a game has its own **Game Resolution** set in its Properties, Steam uses that instead of the global setting.
-- **Remote launches pick a device in advance.** When a Steam client asks this machine to launch a game, Steam doesn't say which device asked until the stream connects, which is too late. So Gaugeshift applies the rule of the **one online device that has a rule**. If several online devices have rules, it waits for the stream to connect and then uses the right one. If no stream follows within a minute, it undoes the change.
+- **Remote launches pick a device in advance.** When a Steam client asks this machine to launch a game, Steam doesn't say which device asked until the stream connects, which is too late. So Gaugeshift applies the rule of the online device with a rule that streamed most recently. When the stream connects, Gaugeshift checks the guess and corrects it if needed. If no stream follows within a minute, it undoes the change.
+
+### Warnings
+
+Gaugeshift shows a warning in its panel when something isn't working:
+
+| Warning                                       | What Gaugeshift does                                                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Can't read Maximum Game Resolution            | Changes nothing, because it couldn't put the old value back afterwards.                                               |
+| Couldn't change the resolution                | Leaves the setting as it was.                                                                                         |
+| Couldn't put the resolution back              | Keeps trying on the next stream or restart. You can also press **Restore**, or set it yourself in Settings → Display. |
+| Launches from other devices can't be detected | Steam Link keeps working. Games launched from another Steam device may start before the resolution changes.           |
+
+Any of these probably means a Steam update changed something. Please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues/new/choose).
 
 ## How it works
 
 - **Stream start and stop:** Steam's `SteamClient.RemotePlay.RegisterForSettingsChanges` reports the streaming client's name (`strStreamingClientName`) when a stream starts and stops.
 - **Remote launches:** these skip Steam's own UI on the host, so the backend watches Steam's `console_log.txt` for the first line of each new launch. The frontend treats a launch as remote when Steam's UI didn't start it (`SteamClient.Apps.RegisterForGameActionStart`) and nothing is streaming yet.
+- **Detection health check:** if Steam's UI starts a launch and the log watcher doesn't report it within 15 seconds, the panel warns that remote-launch detection isn't working.
 - **Changing the setting:** `SteamClient.Settings.SetSetting` writes the setting (`gamescope_game_resolution_global`), and `settingsStore` provides the current value.
 - **Saved state:** the rules and pending-restore state are kept in `~/homebrew/settings/<plugin>/config.json`. Logs are in `~/homebrew/logs/<plugin>/`.
 
 None of these Steam APIs are officially documented, so a Steam update could break something. If it stops working, please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues) and attach the plugin log.
 
-## Build from source
+## Development
 
-You need Node.js 18+ and `zip`.
+You need Node.js 22 with pnpm 9, Python 3.11+ (for the backend tests), and `zip`.
 
 ```sh
-./package.sh          # builds and writes out/gaugeshift.zip
+pnpm install
+pnpm check            # typecheck, format check, tests, build
+pnpm coverage         # frontend tests with a coverage report
+pip install pytest ruff
+ruff check . && pytest tests/backend
+./package.sh          # writes out/gaugeshift.zip
 ```
 
-To make a release, bump `version` in `package.json`, then push a tag such as `v0.4.0`. The GitHub Actions workflow builds the zip and attaches it to the release.
+- `src/engine.ts` makes all the decisions and doesn't touch Steam directly. It's tested in `tests/frontend` against a simulated Steam.
+- `src/steam.ts` and `src/host.ts` connect the engine to Steam and to the backend.
+- `main.py` stores settings and watches Steam's log. It's tested in `tests/backend`.
+
+Every push and pull request runs all the checks. To release, add the version to `CHANGELOG.md`, bump `version` in `package.json`, then push a tag such as `v0.5.0`. The release only builds if every check passes.
 
 ## License
 

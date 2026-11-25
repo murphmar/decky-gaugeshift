@@ -1,6 +1,8 @@
 // Thin wrappers around the Steam client APIs this plugin relies on.
 // None of these are officially documented, so everything is defensive.
 
+import type { RemoteDevice } from "./engine";
+
 declare const SteamClient: any;
 declare const settingsStore: any;
 
@@ -8,7 +10,7 @@ declare const settingsStore: any;
 // settings message (a string field). Taken from Steam's own UI code.
 const GAME_RESOLUTION_FIELD = 21012;
 
-function varint(value: number): number[] {
+export function varint(value: number): number[] {
   const out: number[] = [];
   while (value > 0x7f) {
     out.push((value & 0x7f) | 0x80);
@@ -18,7 +20,7 @@ function varint(value: number): number[] {
   return out;
 }
 
-function encodeStringSetting(field: number, value: string): string {
+export function encodeStringSetting(field: number, value: string): string {
   const bytes = new TextEncoder().encode(value);
   const tag = varint((field << 3) | 2); // wire type 2 = length-delimited
   const all = [...tag, ...varint(bytes.length), ...bytes];
@@ -37,10 +39,8 @@ export function getGameResolution(): string | undefined {
   }
 }
 
-export async function setGameResolution(value: string): Promise<void> {
-  await SteamClient.Settings.SetSetting(
-    encodeStringSetting(GAME_RESOLUTION_FIELD, value),
-  );
+async function setGameResolution(value: string): Promise<void> {
+  await SteamClient.Settings.SetSetting(encodeStringSetting(GAME_RESOLUTION_FIELD, value));
 }
 
 /** Sets the value, then waits for Steam to report it back. */
@@ -79,12 +79,6 @@ export function onStreamStateChanged(cb: (s: StreamState) => void): () => void {
   };
 }
 
-export interface RemoteDevice {
-  name: string;
-  /** "Paired" (known but offline), "Connected" (online), "Streaming", ... */
-  status: string;
-}
-
 /** Calls `cb` with the devices Steam knows for Remote Play / Steam Link. */
 export function onDevicesChanged(cb: (devices: RemoteDevice[]) => void): () => void {
   const handle = SteamClient.RemotePlay.RegisterForDevicesChanges((devices: any[]) => {
@@ -112,8 +106,8 @@ export function onDevicesChanged(cb: (devices: RemoteDevice[]) => void): () => v
  * do not trigger this.
  */
 export function onUiLaunchStarted(cb: (appId: number, actionId: number) => void): () => void {
-  const handle = SteamClient.Apps.RegisterForGameActionStart(
-    (actionId: any, appId: any) => cb(Number(appId), Number(actionId)),
+  const handle = SteamClient.Apps.RegisterForGameActionStart((actionId: any, appId: any) =>
+    cb(Number(appId), Number(actionId)),
   );
   return () => {
     try {

@@ -11,21 +11,26 @@ import {
 } from "@decky/ui";
 import { definePlugin } from "@decky/api";
 import { useEffect, useState } from "react";
-import { FaExpandArrowsAlt } from "react-icons/fa";
-import { Controller, ViewState } from "./controller";
+import { FaExchangeAlt } from "react-icons/fa";
+import { Engine, ViewState, parseResolution } from "./engine";
+import { startEngine, steamHost } from "./host";
 
 const NO_CHANGE = "";
 const CUSTOM = "__custom__";
 
-/** Parses "1920x1200" (also "1920 x 1200", "1920*1200"); returns null if invalid. */
-function parseResolution(text: string): string | null {
-  const m = text.trim().toLowerCase().match(/^(\d{3,5})\s*[x×*]\s*(\d{3,5})$/);
-  if (!m) return null;
-  const w = Number(m[1]);
-  const h = Number(m[2]);
-  if (w < 320 || h < 200 || w > 7680 || h > 4320) return null;
-  return `${w}x${h}`;
-}
+const PRESETS = [
+  "1280x720",
+  "1280x800",
+  "1600x900",
+  "1920x1080",
+  "1920x1200",
+  "2560x1440",
+  "2560x1600",
+  "3840x2160",
+  "Native",
+];
+
+const small = { fontSize: "12px", lineHeight: "16px" } as const;
 
 function CustomResolutionModal(props: {
   device: string;
@@ -57,52 +62,34 @@ function CustomResolutionModal(props: {
   );
 }
 
-const RESOLUTIONS = [
-  "1280x720",
-  "1280x800",
-  "1600x900",
-  "1920x1080",
-  "1920x1200",
-  "2560x1440",
-  "2560x1600",
-  "3840x2160",
-  "Native",
-];
-
-function deviceNames(v: ViewState): string[] {
-  const names = new Set<string>([
-    ...Object.keys(v.config?.devices ?? {}),
-    ...Object.keys(v.config?.rules ?? {}),
-    ...v.paired,
-  ]);
-  if (v.streamingTo) names.add(v.streamingTo);
-  return [...names].sort((a, b) => a.localeCompare(b));
+function statusText(v: ViewState): string {
+  const session = v.config.session;
+  if (!v.streamingTo) {
+    return session ? `Not streaming (waiting to restore ${session.previous})` : "Not streaming";
+  }
+  if (session) return `Streaming to ${v.streamingTo}: ${session.applied}, restores ${session.previous}`;
+  return `Streaming to ${v.streamingTo}: no change`;
 }
 
-function Content({ controller }: { controller: Controller }) {
-  const [view, setView] = useState<ViewState>(controller.view());
-  useEffect(() => controller.subscribe(setView), [controller]);
+function Content({ engine }: { engine: Engine | null }) {
+  const [view, setView] = useState<ViewState | null>(engine?.view() ?? null);
+  useEffect(() => (engine ? engine.subscribe(setView) : undefined), [engine]);
 
-  const config = view.config;
-  if (!config) {
+  if (!engine || !view) {
     return (
       <PanelSection>
-        <PanelSectionRow>Loading…</PanelSectionRow>
+        <PanelSectionRow>
+          <div style={small}>Starting…</div>
+        </PanelSectionRow>
       </PanelSection>
     );
   }
 
-  const devices = deviceNames(view);
+  const { config } = view;
   const session = config.session;
 
-  let status: string;
-  if (!view.streamingTo) status = "Not streaming";
-  else if (session) status = `Streaming to ${view.streamingTo}: set to ${session.applied}, will restore ${session.previous}`;
-  else status = `Streaming to ${view.streamingTo}: no change`;
-
-  const optionsFor = (name: string) => {
-    const rule = config.rules[name];
-    const list = [...RESOLUTIONS];
+  const optionsFor = (rule: string) => {
+    const list = [...PRESETS];
     if (rule && !list.includes(rule)) list.push(rule);
     return [
       { data: NO_CHANGE, label: "Don't change" },
@@ -111,19 +98,18 @@ function Content({ controller }: { controller: Controller }) {
     ];
   };
 
-  const onPick = (name: string, value: string) => {
+  const onPick = (name: string, rule: string, value: string) => {
     if (value === CUSTOM) {
-      const rule = config.rules[name];
       showModal(
         <CustomResolutionModal
           device={name}
           initial={rule && rule !== "Native" ? rule : ""}
-          onSave={(v) => controller.setRule(name, v)}
+          onSave={(v) => engine.setRule(name, v)}
         />,
       );
       return;
     }
-    controller.setRule(name, value);
+    engine.setRule(name, value);
   };
 
   return (
@@ -134,18 +120,23 @@ function Content({ controller }: { controller: Controller }) {
             label="Enabled"
             description="Change Maximum Game Resolution while a device streams from this machine."
             checked={config.enabled}
-            onChange={(v) => controller.setEnabled(v)}
+            onChange={(v) => engine.setEnabled(v)}
           />
         </PanelSectionRow>
         <PanelSectionRow>
-          <div style={{ fontSize: "12px", lineHeight: "16px", padding: "4px 0" }}>
-            <div>{status}</div>
+          <div style={{ ...small, padding: "4px 0" }}>
+            <div>{statusText(view)}</div>
             <div style={{ opacity: 0.6 }}>Current setting: {view.current ?? "unknown"}</div>
           </div>
         </PanelSectionRow>
+        {view.warnings.map((w) => (
+          <PanelSectionRow key={w.kind}>
+            <div style={{ ...small, color: "#ffb347" }}>⚠ {w.message}</div>
+          </PanelSectionRow>
+        ))}
         {session && (
           <PanelSectionRow>
-            <ButtonItem layout="below" onClick={() => controller.restoreNow()}>
+            <ButtonItem layout="below" onClick={() => engine.restoreNow()}>
               Restore {session.previous} now
             </ButtonItem>
           </PanelSectionRow>
@@ -153,21 +144,21 @@ function Content({ controller }: { controller: Controller }) {
       </PanelSection>
 
       <PanelSection title="Devices">
-        {devices.length === 0 && (
+        {view.devices.length === 0 && (
           <PanelSectionRow>
-            <div style={{ fontSize: "12px", opacity: 0.8 }}>
+            <div style={{ ...small, opacity: 0.8 }}>
               Stream to this machine once from Steam Link or another Steam device and it will show up here.
             </div>
           </PanelSectionRow>
         )}
-        {devices.map((name) => (
-          <PanelSectionRow key={name}>
+        {view.devices.map((d) => (
+          <PanelSectionRow key={d.name}>
             <DropdownItem
-              label={name}
-              description={name === view.streamingTo ? "Streaming now" : undefined}
-              rgOptions={optionsFor(name)}
-              selectedOption={config.rules[name] ?? NO_CHANGE}
-              onChange={(o) => onPick(name, String(o.data))}
+              label={d.name}
+              description={d.streaming ? "Streaming now" : d.online ? "Online" : undefined}
+              rgOptions={optionsFor(d.rule)}
+              selectedOption={d.rule}
+              onChange={(o) => onPick(d.name, d.rule, String(o.data))}
             />
           </PanelSectionRow>
         ))}
@@ -185,16 +176,45 @@ function Content({ controller }: { controller: Controller }) {
 }
 
 export default definePlugin(() => {
-  const controller = new Controller();
-  controller.start().catch((e) => console.error("[Gaugeshift] start failed", e));
+  let engine: Engine | null = null;
+  let disconnect: (() => void) | null = null;
+  let unloaded = false;
+  const ready = startEngine()
+    .then((started) => {
+      if (unloaded) {
+        started.disconnect();
+        void started.engine.stop();
+        return;
+      }
+      engine = started.engine;
+      disconnect = started.disconnect;
+    })
+    .catch((e) => steamHost.log("error", `Failed to start: ${e}`));
+
+  function Panel() {
+    const [e, setE] = useState<Engine | null>(engine);
+    useEffect(() => {
+      if (e) return undefined;
+      let active = true;
+      void ready.then(() => {
+        if (active) setE(engine);
+      });
+      return () => {
+        active = false;
+      };
+    }, [e]);
+    return <Content engine={e} />;
+  }
 
   return {
     name: "Gaugeshift",
     titleView: <div className={staticClasses.Title}>Gaugeshift</div>,
-    content: <Content controller={controller} />,
-    icon: <FaExpandArrowsAlt />,
+    content: <Panel />,
+    icon: <FaExchangeAlt />,
     onDismount() {
-      controller.stop();
+      unloaded = true;
+      disconnect?.();
+      engine?.stop();
     },
   };
 });

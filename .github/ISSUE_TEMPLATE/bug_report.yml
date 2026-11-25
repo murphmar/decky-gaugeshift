@@ -1,0 +1,42 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: For example "Set steamdeck to 1920x1200, then choose Stream on a game from the Deck's library."
+    validations:
+      required: true
+  - type: input
+    id: devices
+    attributes:
+      label: Devices
+      description: The machine running Gaugeshift, and the device(s) streaming from it (Steam Deck, Steam Link on iPhone, …).
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Gaugeshift version, SteamOS version and channel (Stable/Beta/Preview), Decky Loader version.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Gaugeshift log
+      description: |
+        The newest file in `~/homebrew/logs/gaugeshift/` on the machine running Gaugeshift.
+        In Desktop Mode you can open that folder in Dolphin (show hidden files with Ctrl+H).
+      render: text
+    validations:
+      required: true
