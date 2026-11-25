@@ -1,5 +1,8 @@
 # Gaugeshift
 
+
+[![Release](https://github.com/murphmar/decky-gaugeshift/actions/workflows/release.yml/badge.svg)](https://github.com/murphmar/decky-gaugeshift/actions/workflows/release.yml)
+
 **Per-device game resolution for Remote Play and Steam Link.**
 
 Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines you stream _from_, such as a Steam Machine or a docked Steam Deck. When a device starts streaming, Gaugeshift sets Steam's **Maximum Game Resolution** for that device. When the stream ends, it puts the setting back.
