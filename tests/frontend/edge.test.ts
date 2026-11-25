@@ -130,3 +130,26 @@ describe("remaining paths", () => {
     expect(host.lastSaved?.session).toMatchObject({ applied: "1280x720", previous: "1920x1080" });
   });
 });
+
+describe("notifications", () => {
+  // Steam's notifications cut off text beyond roughly 45 characters per line
+  // (checked on a Steam Machine). Keep every notification well inside that,
+  // even with the longest possible resolution.
+  const TITLE_MAX = 30;
+  const BODY_MAX = 42;
+  const longest = "7680x4320";
+
+  it("fit on screen, even with the longest resolution", async () => {
+    const { host, engine } = await setup({ config: { rules: { [PHONE]: longest } }, resolution: "4320x7680" });
+    await engine.onStreamState(PHONE); // success
+    host.failWrites = 99;
+    await engine.setRule(PHONE, "7680x4319"); // change fails
+    await engine.onStreamState(""); // restore fails
+    expect(host.toasts).toHaveLength(3);
+    for (const toast of host.toasts) {
+      const [title, body] = toast.split(" | ");
+      expect(title.length, toast).toBeLessThanOrEqual(TITLE_MAX);
+      expect(body.length, toast).toBeLessThanOrEqual(BODY_MAX);
+    }
+  });
+});

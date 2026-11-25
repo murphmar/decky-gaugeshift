@@ -43,7 +43,7 @@ describe("streaming", () => {
     const { host, engine } = await setup({ config: { rules } });
     await engine.onStreamState(PHONE);
     expect(host.resolution).toBe("1280x720");
-    expect(host.toasts).toEqual(["Streaming to iPhone: games will run at up to 1280x720"]);
+    expect(host.toasts).toEqual(["Gaugeshift | Maximum Resolution: 1280x720"]);
     expect(host.lastSaved?.session).toMatchObject({ device: PHONE, previous: "1920x1080", applied: "1280x720" });
 
     await engine.onStreamState("");
@@ -268,7 +268,7 @@ describe("failures", () => {
     expect(host.resolution).toBe("1920x1080");
     expect(host.lastSaved?.session).toBeNull();
     expect(engine.view().warnings.map((w) => w.kind)).toEqual(["apply-failed"]);
-    expect(host.toasts).toEqual(["Couldn't change the resolution for iPhone"]);
+    expect(host.toasts).toEqual(["Gaugeshift | Couldn't change to 1280x720"]);
     await engine.onStreamState("");
     expect(host.writes).toHaveLength(WRITE_ATTEMPTS); // nothing to restore
   });

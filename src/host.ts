@@ -27,8 +27,8 @@ export const steamHost: Host = {
     else console.log(line);
     backendLog(level, message).catch(() => {});
   },
-  toast(message: string) {
-    toaster.toast({ title: "Gaugeshift", body: message });
+  toast(title: string, body: string) {
+    toaster.toast({ title, body });
   },
   now: () => Date.now(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),

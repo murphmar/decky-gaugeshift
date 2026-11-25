@@ -10,6 +10,7 @@ export class FakeHost implements Host {
   writes: string[] = [];
   saved: Config[] = [];
   logs: Array<[LogLevel, string]> = [];
+  /** Notifications shown, as "title | body". */
   toasts: string[] = [];
   /** Ordered record of writes and saves, to check what happens first. */
   events: string[] = [];
@@ -43,8 +44,8 @@ export class FakeHost implements Host {
     this.logs.push([level, message]);
   }
 
-  toast(message: string) {
-    this.toasts.push(message);
+  toast(title: string, body: string) {
+    this.toasts.push(`${title} | ${body}`);
   }
 
   now() {

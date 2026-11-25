@@ -43,7 +43,8 @@ export interface Host {
   writeResolution(value: string): Promise<boolean>;
   saveConfig(config: Config): Promise<void>;
   log(level: LogLevel, message: string): void;
-  toast(message: string): void;
+  /** Shows a notification. Keep both short: Steam cuts off long text. */
+  toast(title: string, body: string): void;
   now(): number;
   sleep(ms: number): Promise<void>;
   setTimer(fn: () => void, ms: number): unknown;
@@ -476,7 +477,7 @@ export class Engine {
     if (await this.writeWithRetry(target)) {
       this.clearWarning("apply-failed");
       this.host.log("info", `${reason}; Maximum Game Resolution ${current} -> ${target}`);
-      this.host.toast(`Streaming to ${device}: games will run at up to ${target}`);
+      this.host.toast("Gaugeshift", `Maximum Resolution: ${target}`);
       return;
     }
 
@@ -486,7 +487,7 @@ export class Engine {
     await this.save();
     this.host.log("error", `${reason}; couldn't set ${target} (Steam reports ${now})`);
     this.warn("apply-failed", `Couldn't change Maximum Game Resolution to ${target} for ${device}.`);
-    this.host.toast(`Couldn't change the resolution for ${device}`);
+    this.host.toast("Gaugeshift", `Couldn't change to ${target}`);
   }
 
   /** Puts back the value from before the stream, if Gaugeshift changed it. */
@@ -519,7 +520,7 @@ export class Engine {
       "restore-failed",
       `Couldn't put Maximum Game Resolution back to ${session.previous}. Use "Restore" to try again, or set it in Settings → Display.`,
     );
-    this.host.toast(`Couldn't restore the resolution to ${session.previous}`);
+    this.host.toast("Gaugeshift", `Couldn't restore ${session.previous}`);
   }
 
   private async writeWithRetry(value: string): Promise<boolean> {
