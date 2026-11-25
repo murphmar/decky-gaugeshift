@@ -232,3 +232,18 @@ describe("the panel", () => {
     expect(view("Tablet")?.screen).toBeUndefined();
   });
 });
+
+describe("screen sizes known from earlier streams", () => {
+  it("apply as soon as a device connects, without waiting for it to report", async () => {
+    const { Engine, defaultConfig } = await import("../../src/engine");
+    const { FakeHost } = await import("./fakeHost");
+    const host = new FakeHost();
+    const engine = new Engine(host, defaultConfig()); // New devices: Match
+    // At start-up, Gaugeshift reads sizes from Steam's logs before listening
+    // for streams...
+    await engine.onClientScreen(PHONE, "2001x1125");
+    // ...so a phone that's already streaming gets its size straight away.
+    await engine.onStreamState(PHONE);
+    expect(host.resolution).toBe("2001x1125");
+  });
+});

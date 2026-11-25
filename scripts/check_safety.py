@@ -41,7 +41,7 @@ FORBIDDEN_PY_METHODS = {
 }
 
 # Backend methods the frontend may call.
-ALLOWED_BACKEND_METHODS = {"get_config", "save_config", "log"}
+ALLOWED_BACKEND_METHODS = {"get_config", "save_config", "known_screens", "log"}
 
 FORBIDDEN_JS = {
     r"\bfetch\s*\(": "network request (fetch)",

@@ -290,11 +290,42 @@ class ScreenWatcher:
         return screens
 
 
+def read_known_screens(paths: list[str]) -> dict[str, str]:
+    """Screen sizes reported in existing streaming logs, oldest log first.
+
+    Returns device -> "WIDTHxHEIGHT", keeping each device's latest report.
+    Missing or unreadable logs are skipped.
+    """
+    screens: dict[str, str] = {}
+    for path in paths:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                device = None
+                for line in f:
+                    m = STREAM_START_RE.search(line)
+                    if m:
+                        device = m.group(1)
+                        continue
+                    m = SCREEN_RE.search(line)
+                    if m and device:
+                        width, height = int(m.group(1)), int(m.group(2))
+                        if 320 <= width <= 7680 and 200 <= height <= 4320:
+                            screens[device] = f"{width}x{height}"
+                        device = None
+        except OSError:
+            continue
+    return screens
+
+
 class Plugin:
     def __init__(self):
         self.config = default_config()
         self.config_path = ""
         self._watcher_task = None
+
+    @property
+    def _logs_dir(self) -> str:
+        return os.path.join(decky.DECKY_USER_HOME, ".local", "share", "Steam", "logs")
 
     @property
     def _path(self) -> str:
@@ -310,6 +341,13 @@ class Plugin:
         write_json_atomic(self._path, new)
         self.config = new
         return new
+
+    async def known_screens(self) -> dict[str, str]:
+        """Screen sizes devices reported in earlier streams, from Steam's logs."""
+        logs = self._logs_dir
+        return read_known_screens(
+            [os.path.join(logs, "streaming_log.previous.txt"), os.path.join(logs, "streaming_log.txt")]
+        )
 
     async def log(self, level: str, message: str) -> None:
         log = {"warning": decky.logger.warning, "error": decky.logger.error}.get(level, decky.logger.info)
@@ -352,7 +390,7 @@ class Plugin:
     async def _main(self):
         self.config = load_config(self._path)
         decky.logger.info(f"Loaded settings from {self._path}")
-        logs = os.path.join(decky.DECKY_USER_HOME, ".local", "share", "Steam", "logs")
+        logs = self._logs_dir
         self._watcher_task = asyncio.get_event_loop().create_task(
             self._watch_logs(os.path.join(logs, "console_log.txt"), os.path.join(logs, "streaming_log.txt"))
         )

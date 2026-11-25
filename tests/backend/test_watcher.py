@@ -235,3 +235,37 @@ def test_watch_loop_emits_screens(main, decky, tmp_path):
 
     asyncio.run(go())
     assert decky.emitted == [("client_screen", "steamdeck", "1280x800")]
+
+
+# ---- screen sizes from earlier streams --------------------------------------
+
+
+def test_reads_screen_sizes_from_earlier_streams(main, tmp_path):
+    previous = tmp_path / "streaming_log.previous.txt"
+    current = tmp_path / "streaming_log.txt"
+    previous.write_text(start("steamdeck") + screen("1280x800") + start("iPhone") + screen("1170x2532"))
+    current.write_text(start("iPhone") + "other\n" + screen("2001x1125") + screen("2001x1125") + start("Tablet"))
+    # Latest report wins (the iPhone app's size changed); a stream with no
+    # report yet (Tablet) is skipped.
+    assert main.read_known_screens([str(previous), str(current)]) == {
+        "steamdeck": "1280x800",
+        "iPhone": "2001x1125",
+    }
+
+
+def test_known_screens_skip_missing_logs_and_odd_lines(main, tmp_path):
+    current = tmp_path / "streaming_log.txt"
+    current.write_text(screen("1280x800") + start("odd") + screen("10x10") + start("deck") + screen("1280x800")[:30])
+    assert main.read_known_screens([str(tmp_path / "missing.txt"), str(current)]) == {}
+
+
+def test_known_screens_from_the_plugin(main, decky):
+    logs = os.path.join(decky.DECKY_USER_HOME, ".local", "share", "Steam", "logs")
+    os.makedirs(logs)
+    with open(os.path.join(logs, "streaming_log.txt"), "w") as f:
+        f.write(start("steamdeck") + screen("1280x800"))
+    assert asyncio.run(main.Plugin().known_screens()) == {"steamdeck": "1280x800"}
+
+
+def test_known_screens_without_any_logs(main, decky):
+    assert asyncio.run(main.Plugin().known_screens()) == {}

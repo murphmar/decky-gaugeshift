@@ -60,6 +60,8 @@ flowchart LR
    - **For anything else**, the engine waits.
 3. A couple of seconds later, the device reports its screen size in Steam's streaming log. The backend passes it on, the engine remembers it for next time, and applies it now. If the Deck's assumed size was right, nothing changes.
 
+When Gaugeshift starts, it also asks the backend for every screen size already in Steam's streaming logs (the current one and the previous one). It does that before it starts listening for streams. So devices that streamed before Gaugeshift was installed are recognized at once, and so is a device that's already connected when Gaugeshift starts. The frontend asks for these rather than waiting to be told, because a message sent at startup could arrive before the frontend is listening.
+
 ### …a phone connects with Steam Link
 
 1. Steam reports a stream to "iPhone". The engine records the device and looks up its rule, say 1920x1200.
@@ -104,7 +106,7 @@ When Gaugeshift is turned off, disabled, updated or uninstalled, it restores the
 - **Do nothing when unsure.** Every uncertain situation (a value it can't read, a change it can't confirm) ends with the setting left alone and a visible warning, never with a guess.
 - **Respect the user.** If the setting isn't the value Gaugeshift set, someone changed it on purpose, so Gaugeshift doesn't touch it.
 - **All decisions in one place.** `engine.ts` contains every rule about _what_ should happen, and nothing about _how_ to talk to Steam. That separation is what allows about 90 tests, including randomized stress tests, to check the decisions without a Steam Machine.
-- **A small, stable backend.** The backend only stores data and watches the log. Its method names (`get_config`, `save_config`, `log`) must stay the same across versions, because during an update the old frontend may still call the new backend.
+- **A small, stable backend.** The backend only stores data and watches the log. Its method names (`get_config`, `save_config`, `known_screens`, `log`) must stay the same across versions, because during an update the old frontend may still call the new backend.
 
 ## The parts of Steam Gaugeshift relies on
 

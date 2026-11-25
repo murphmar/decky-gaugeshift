@@ -13,6 +13,7 @@ import {
 const getConfig = callable<[], Config>("get_config");
 const saveConfig = callable<[config: Config], Config>("save_config");
 const backendLog = callable<[level: string, message: string], void>("log");
+const knownScreens = callable<[], Record<string, string>>("known_screens");
 
 export const steamHost: Host = {
   readResolution: getGameResolution,
@@ -50,6 +51,16 @@ export async function startEngine(): Promise<{ engine: Engine; disconnect: () =>
     engine.onClientScreen(device, size);
   });
   unsubs.push(() => removeEventListener("client_screen", screenListener));
+  // Screen sizes devices reported in earlier streams (Steam keeps them in its
+  // logs), so a device that's already streaming, or streamed before
+  // Gaugeshift was installed, doesn't have to wait for its next stream.
+  try {
+    for (const [device, size] of Object.entries(await knownScreens())) {
+      await engine.onClientScreen(device, size);
+    }
+  } catch (e) {
+    steamHost.log("warning", `Couldn't read earlier screen sizes: ${e}`);
+  }
   // Subscribe to the stream state last: its first report triggers recovery.
   unsubs.push(onStreamStateChanged(({ clientName }) => engine.onStreamState(clientName)));
   return { engine, disconnect: () => unsubs.forEach((u) => u()) };

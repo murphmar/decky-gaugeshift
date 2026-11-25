@@ -45,7 +45,7 @@ Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a 
 
 1. Stream as usual. Each new device gets the **New devices** setting, which is **Match their screen** unless you change it:
    - **A Steam Deck** gets 1280x800 from its very first stream.
-   - **Other devices** report their screen size a couple of seconds after the stream starts, and Gaugeshift uses it from then on.
+   - **Other devices** report their screen size a couple of seconds after the stream starts, and Gaugeshift uses it from then on. A device that streamed before you installed Gaugeshift is recognized at once, because Steam's logs already hold its size.
 2. A notification shows the resolution games will use, such as "Maximum Resolution: 1280x800".
 3. To use something else for a device, open **Gaugeshift** in the Quick Access Menu and pick a different rule. For example, **steamdeck** → `1920x1200` renders sharper (1.5× the Deck's screen) at the cost of performance.
 
