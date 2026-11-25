@@ -93,6 +93,8 @@ export interface DeviceView {
   /** `screen` is assumed (Steam Deck), not reported. */
   screenAssumed: boolean;
   online: boolean;
+  /** Steam lists it as a Remote Play / Steam Link device, so it stays listed even if forgotten. */
+  paired: boolean;
   streaming: boolean;
   /** Last time it streamed from this machine (ms since epoch), if ever. */
   lastSeen?: number;
@@ -341,6 +343,7 @@ export class Engine {
           screen: reported ?? (assumed ? STEAM_DECK_SCREEN : undefined),
           screenAssumed: assumed,
           online: name === this.streamingTo || (steam ? isOnline(steam) : false),
+          paired: steam !== undefined,
           streaming: name === this.streamingTo,
           lastSeen: this.config.devices[name],
         };

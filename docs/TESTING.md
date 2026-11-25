@@ -45,6 +45,7 @@ Run on a machine with Decky Loader, streaming to at least one Steam Link device 
 | 17  | New Steam Deck                | Forget the Deck in the panel (or test with a fresh install), then choose **Stream** on a game from the Deck | Game starts at 1280x800 with no setup                                                                                                                |
 | 18  | Screen size learned           | Set a phone to **Match screen** and connect it                                                              | Panel shows "waiting for its screen size", then a couple of seconds later the phone's size (e.g. 2001x1125) is applied and shown in its Match option |
 | 19  | New devices: Don't change     | Set **New devices** to Don't change, then connect a device Gaugeshift hasn't seen                           | Nothing changes                                                                                                                                      |
+| 20  | Forget a device               | Choose **Forget this device…** for a device that isn't paired with Steam Link, and for one that is          | Unpaired device disappears from the list; paired device stays, back on the New devices setting                                                       |
 
 ## Results
 
@@ -73,5 +74,6 @@ Run on a machine with Decky Loader, streaming to at least one Steam Link device 
 | 17  | Not yet run |                                                                                                 |
 | 18  | Not yet run |                                                                                                 |
 | 19  | Not yet run |                                                                                                 |
+| 20  | Not yet run |                                                                                                 |
 
 **Still needed before 1.0:** the remaining rows on 0.5.0, and a run on SteamOS **Stable** with the Stable Steam client.

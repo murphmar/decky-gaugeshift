@@ -16,6 +16,7 @@ import { DeviceView, Engine, MATCH, NONE, NewDevicesRule, ViewState, parseResolu
 import { startEngine, steamHost } from "./host";
 
 const CUSTOM = "__custom__";
+const FORGET = "__forget__";
 
 const PRESETS = [
   "1280x720",
@@ -117,10 +118,28 @@ function Content({ engine }: { engine: Engine | null }) {
       { data: NONE, label: "Don't change" },
       ...list.map((r) => ({ data: r, label: r })),
       { data: CUSTOM, label: "Custom…" },
+      { data: FORGET, label: "Forget this device…" },
     ];
   };
 
   const onPick = (name: string, rule: string, value: string) => {
+    if (value === FORGET) {
+      const paired = view.devices.find((d) => d.name === name)?.paired;
+      showModal(
+        <ConfirmModal
+          strTitle={`Forget ${name}?`}
+          strDescription={
+            paired
+              ? `Gaugeshift will forget its rule and screen size. ${name} is paired with Steam Link, so it stays in the list (using the New devices setting) until you unpair it in Steam's Remote Play settings.`
+              : `Gaugeshift will forget its rule and screen size, and remove it from this list. If it streams again, it's treated as a new device.`
+          }
+          strOKButtonText="Forget"
+          bDestructiveWarning
+          onOK={() => engine.forgetDevice(name)}
+        />,
+      );
+      return;
+    }
     if (value === CUSTOM) {
       showModal(
         <CustomResolutionModal

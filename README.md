@@ -49,7 +49,7 @@ Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a 
 2. A notification shows the resolution games will use, such as "Maximum Resolution: 1280x800".
 3. To use something else for a device, open **Gaugeshift** in the Quick Access Menu and pick a different rule. For example, **steamdeck** → `1920x1200` renders sharper (1.5× the Deck's screen) at the cost of performance.
 
-Devices paired for Steam Link appear in the list straight away; other devices appear after their first stream.
+Devices paired for Steam Link appear in the list straight away; other devices appear after their first stream. To remove one, choose **Forget this device…** at the bottom of its menu. Gaugeshift then forgets its rule and screen size. A device that's still paired with Steam Link stays listed until you unpair it in Steam's Remote Play settings.
 
 ### Good to know
 
