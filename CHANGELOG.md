@@ -19,8 +19,17 @@ All notable changes to Gaugeshift are listed here.
   - Launches from other devices can't be detected with the current Steam version.
 - Failed changes and restores are retried. A restore that still fails is kept and retried on the next stream, the
   next start, or with the Restore button.
-- Automated tests for the engine (about 70 scenarios) and the backend (about 40), run on every push.
-- Releases are only built when all checks pass.
+- About 130 automated tests, run on every change:
+  - The engine's scenarios.
+  - Randomized stress tests of thousands of random event sequences.
+  - The Steam adapter.
+  - The backend.
+- Minimum test coverage is enforced.
+- A safety check that fails the build if Gaugeshift ever asks for root, gains network access, runs other programs or loads code at runtime.
+- Dependency vulnerability audits, CodeQL code scanning, Dependabot updates, and GitHub Actions pinned to exact commits.
+- Releases are built on GitHub only after every check passes. They come with a SHA-256 checksum and signed build provenance, so anyone can verify a download.
+- SECURITY.md, ARCHITECTURE.md, a hardware test checklist with results (docs/TESTING.md), and a "How this was made" section in the README.
+- Development dependencies updated; no known vulnerabilities remain.
 
 ### Fixed
 

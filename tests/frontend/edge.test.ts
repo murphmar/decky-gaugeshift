@@ -69,3 +69,64 @@ describe("robustness", () => {
     expect(host.hasLog("error", "render failed")).toBe(true);
   });
 });
+
+describe("remaining paths", () => {
+  it("stops notifying a listener once it unsubscribes", async () => {
+    const { engine } = await setup();
+    let calls = 0;
+    const unsubscribe = engine.subscribe(() => calls++);
+    unsubscribe();
+    await engine.onStreamState(PHONE);
+    expect(calls).toBe(1); // only the initial call
+  });
+
+  it("restarts the detection check when the same app is launched again", async () => {
+    const { host, engine } = await setup();
+    engine.onUiLaunch(292030, 1);
+    host.advance(10_000);
+    engine.onUiLaunch(292030, 2);
+    host.advance(10_000); // 20 s after the first launch, 10 s after the second
+    expect(engine.view().warnings).toEqual([]);
+    host.advance(5_000);
+    expect(engine.view().warnings.map((w) => w.kind)).toEqual(["launch-detection"]);
+  });
+
+  it("logs errors from unexpected places, including non-Error values, and carries on", async () => {
+    const { host, engine } = await setup({ config: { rules: { [PHONE]: "1280x720" } } });
+    host.toast = () => {
+      throw "toast broke";
+    };
+    await engine.onStreamState(PHONE);
+    expect(host.hasLog("error", "Unexpected error: toast broke")).toBe(true);
+    host.toast = () => {
+      throw new Error("toast broke again");
+    };
+    await engine.setRule(PHONE, "1920x1080");
+    expect(host.hasLog("error", "toast broke again")).toBe(true);
+    await engine.onStreamState("");
+    expect(host.resolution).toBe("1920x1080");
+  });
+
+  it("guesses alphabetically between devices that have never streamed", async () => {
+    const rules = { Zed: "1280x720", Amy: "1920x1200" };
+    const { host, engine } = await setup({ config: { rules } });
+    engine.onDevices([
+      { name: "Zed", status: "Connected" },
+      { name: "Amy", status: "Connected" },
+    ]);
+    await engine.onLogLaunch(1, 1);
+    expect(host.resolution).toBe("1920x1200");
+  });
+
+  it("records the intended value if the change fails and the setting becomes unreadable", async () => {
+    const { host, engine } = await setup({ config: { rules: { [PHONE]: "1280x720" } } });
+    const real = host.writeResolution.bind(host);
+    host.writeResolution = async (v: string) => {
+      host.unreadable = true;
+      await real(v);
+      return false;
+    };
+    await engine.onStreamState(PHONE);
+    expect(host.lastSaved?.session).toMatchObject({ applied: "1280x720", previous: "1920x1080" });
+  });
+});

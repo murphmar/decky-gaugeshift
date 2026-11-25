@@ -112,7 +112,6 @@ export class Engine {
   private streamingTo = "";
   private devices: RemoteDevice[] = [];
   private firstStreamEvent = true;
-  private stopped = false;
   private queue: Promise<void> = Promise.resolve();
   private listeners = new Set<(v: ViewState) => void>();
   private warnings = new Map<WarningKind, string>();
@@ -155,7 +154,6 @@ export class Engine {
       appId,
       this.host.setTimer(() => {
         this.detectionTimers.delete(appId);
-        if (this.stopped) return;
         this.host.log("warning", `Launch of app ${appId} wasn't seen in Steam's log`);
         this.warn(
           "launch-detection",
@@ -221,7 +219,6 @@ export class Engine {
 
   /** The plugin is unloading: never leave the setting changed behind us. */
   stop(): Promise<void> {
-    this.stopped = true;
     this.clearRemoteLaunchTimer();
     for (const t of this.detectionTimers.values()) this.host.clearTimer(t);
     this.detectionTimers.clear();

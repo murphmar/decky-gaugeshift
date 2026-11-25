@@ -465,6 +465,6 @@ describe("view", () => {
     engine.subscribe((v) => seen.push(v.streamingTo));
     await engine.onStreamState(PHONE);
     expect(seen[0]).toBe("");
-    expect(seen.at(-1)).toBe(PHONE);
+    expect(seen[seen.length - 1]).toBe(PHONE);
   });
 });

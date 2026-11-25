@@ -69,13 +69,33 @@ Any of these probably means a Steam update changed something. Please [open an is
 
 ## How it works
 
-- **Stream start and stop:** Steam's `SteamClient.RemotePlay.RegisterForSettingsChanges` reports the streaming client's name (`strStreamingClientName`) when a stream starts and stops.
-- **Remote launches:** these skip Steam's own UI on the host, so the backend watches Steam's `console_log.txt` for the first line of each new launch. The frontend treats a launch as remote when Steam's UI didn't start it (`SteamClient.Apps.RegisterForGameActionStart`) and nothing is streaming yet.
-- **Detection health check:** if Steam's UI starts a launch and the log watcher doesn't report it within 15 seconds, the panel warns that remote-launch detection isn't working.
-- **Changing the setting:** `SteamClient.Settings.SetSetting` writes the setting (`gamescope_game_resolution_global`), and `settingsStore` provides the current value.
-- **Saved state:** the rules and pending-restore state are kept in `~/homebrew/settings/<plugin>/config.json`. Logs are in `~/homebrew/logs/<plugin>/`.
+Gaugeshift listens to Steam's own Remote Play events to see which device is streaming. It also reads Steam's console log to catch launches requested by another Steam device, a few seconds before the game starts. It changes the setting through Steam's own settings function, and saves what to restore _before_ changing anything.
 
-None of these Steam APIs are officially documented, so a Steam update could break something. If it stops working, please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues) and attach the plugin log.
+[ARCHITECTURE.md](ARCHITECTURE.md) explains the code in plain terms: what each part does, what happens in each situation, and why. None of the Steam functions Gaugeshift relies on are officially documented, so a Steam update could break something. If that happens, Gaugeshift warns you in its panel and leaves the setting alone.
+
+## Safety
+
+Gaugeshift doesn't need root, never uses the network, can't run other programs, and only touches one Steam setting, its own settings file, and Steam's log (read-only). Every change it makes is undone. An automated check enforces these limits on every build. Releases are built on GitHub from the source code, and you can verify that a download matches its release. See [SECURITY.md](SECURITY.md) for the details.
+
+## How this was made
+
+Gaugeshift was built by Mark with substantial help from an AI coding assistant (Claude, by Anthropic), which wrote most of the code under Mark's direction and review. That's why it isn't in the Decky Plugin Store, which doesn't accept AI-written code.
+
+We know AI-written plugins have a reputation for being hard to trust, so here is what was done about that:
+
+- **Every behavior is tested.** About 130 automated tests run on every change. They include randomized stress tests that try thousands of random sequences of events, and they're checked against deliberately broken versions of the code to make sure they catch real bugs. See [docs/TESTING.md](docs/TESTING.md).
+- **It's tested on real hardware** before every release, against a written checklist, with the results published.
+- **Its abilities are locked down** and checked automatically: see [Safety](#safety).
+- **The code is documented** so anyone can review it, and so it can be maintained without the tool that helped write it: see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+If you find something wrong, please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues/new/choose).
+
+## Support and maintenance
+
+- **Last tested on:** SteamOS 3.10.0 (Preview) with the Steam client Beta of November 2026, and Decky Loader 3.3.1. The [test results](docs/TESTING.md#results) list the details for each release.
+- **Steam updates:** Steam updates can change the undocumented functions Gaugeshift relies on. Gaugeshift is designed to fail safely when that happens: it warns you and changes nothing. Fixes for breakage like this get priority.
+- **Problems:** please use the [bug report form](https://github.com/murphmar/decky-gaugeshift/issues/new/choose), and attach the Gaugeshift log it asks for.
+- **Security problems:** see [SECURITY.md](SECURITY.md#reporting-a-security-problem).
 
 ## Development
 
@@ -83,16 +103,17 @@ You need Node.js 22 with pnpm 9, Python 3.11+ (for the backend tests), and `zip`
 
 ```sh
 pnpm install
-pnpm check            # typecheck, format check, tests, build
+pnpm check            # types, formatting, tests (with coverage), build, safety check, audit
 pnpm coverage         # frontend tests with a coverage report
-pip install pytest ruff
-ruff check . && pytest tests/backend
+pip install pytest pytest-cov ruff
+ruff check . && pytest tests/backend --cov=main
 ./package.sh          # writes out/gaugeshift.zip
 ```
 
 - `src/engine.ts` makes all the decisions and doesn't touch Steam directly. It's tested in `tests/frontend` against a simulated Steam.
 - `src/steam.ts` and `src/host.ts` connect the engine to Steam and to the backend.
 - `main.py` stores settings and watches Steam's log. It's tested in `tests/backend`.
+- [ARCHITECTURE.md](ARCHITECTURE.md) explains how it all fits together, and [docs/TESTING.md](docs/TESTING.md) describes the tests and the hardware checklist.
 
 Every push and pull request runs all the checks. To release, add the version to `CHANGELOG.md`, bump `version` in `package.json`, then push a tag such as `v0.5.0`. The release only builds if every check passes.
 
