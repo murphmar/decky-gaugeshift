@@ -1,0 +1,11 @@
+{
+  "name": "Gaugeshift",
+  "author": "Mark",
+  "flags": [],
+  "api_version": 1,
+  "publish": {
+    "tags": ["remote play", "streaming", "steam link", "resolution", "display"],
+    "description": "Per-device game resolution for Remote Play and Steam Link. Changes Maximum Game Resolution when a device starts streaming from this machine, and puts it back when it disconnects.",
+    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+  }
+}
