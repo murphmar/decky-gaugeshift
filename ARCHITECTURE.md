@@ -105,7 +105,7 @@ When Gaugeshift is turned off, disabled, updated or uninstalled, it restores the
 - **Save before change.** The "put back" record is always saved before the setting changes. Whatever happens next, the original value is on disk.
 - **Do nothing when unsure.** Every uncertain situation (a value it can't read, a change it can't confirm) ends with the setting left alone and a visible warning, never with a guess.
 - **Respect the user.** If the setting isn't the value Gaugeshift set, someone changed it on purpose, so Gaugeshift doesn't touch it.
-- **All decisions in one place.** `engine.ts` contains every rule about _what_ should happen, and nothing about _how_ to talk to Steam. That separation is what allows about 90 tests, including randomized stress tests, to check the decisions without a Steam Machine.
+- **All decisions in one place.** `engine.ts` contains every rule about _what_ should happen, and nothing about _how_ to talk to Steam. That separation is what allows about 130 tests, including randomized stress tests, to check the decisions without a Steam Machine.
 - **A small, stable backend.** The backend only stores data and watches the log. Its method names (`get_config`, `save_config`, `known_screens`, `log`) must stay the same across versions, because during an update the old frontend may still call the new backend.
 
 ## The parts of Steam Gaugeshift relies on

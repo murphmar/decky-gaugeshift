@@ -24,7 +24,7 @@ That's the complete list. Gaugeshift doesn't touch any other setting or file.
 - **No downloaded or generated code.** Everything that runs is in the release zip; nothing is fetched or built at runtime.
 - **No binaries.** The plugin is plain JavaScript and Python that you can read.
 
-These aren't just promises. `scripts/check_safety.py` checks all of them, in the source code and in the built bundle, and fails the build on GitHub if any of them stops being true. For example, it fails if:
+`scripts/check_safety.py` checks all of these in the source code and in the built bundle, and fails the build on GitHub if any of them stops being true. For example, it fails if:
 
 - the plugin asks for root;
 - a network call or URL appears;
@@ -47,10 +47,10 @@ These aren't just promises. `scripts/check_safety.py` checks all of them, in the
 On every change, GitHub runs:
 
 - **Type checking, formatting and linting** for the TypeScript and Python code.
-- **About 90 frontend tests**, with minimum coverage enforced:
+- **About 130 frontend tests**, with minimum coverage enforced:
   - Every scenario we know of: streams, launches from other devices, rule changes, restarts and failures.
   - **Randomized stress tests**, which try thousands of random sequences of events and check every time that the setting ends up back where you left it. To make sure they work, we deliberately broke the code in several ways, and the stress tests caught every one.
-- **About 40 backend tests**, on Python 3.11 and 3.14 (the version Decky uses). They cover corrupted settings files, interrupted saves, and Steam rotating or truncating its log.
+- **About 65 backend tests**, on Python 3.11 and 3.14 (the version Decky uses). They cover corrupted settings files, interrupted saves, reading screen sizes, and Steam rotating or truncating its logs.
 - **The safety check** described above.
 - **A dependency audit** for known vulnerabilities, plus GitHub's **CodeQL** code scanning every week and on every change.
 

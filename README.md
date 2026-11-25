@@ -2,40 +2,37 @@
 
 **Per-device game resolution for Remote Play and Steam Link.**
 
-Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines that you stream _from_, such as a Steam Machine or a Steam Deck sitting in its dock. When a device starts streaming from it, Gaugeshift changes Steam's **Maximum Game Resolution** to the size you picked for that device. When the device disconnects, Gaugeshift puts the setting back to whatever it was before.
-
-Like a train changing gauge at a border, your games re-fit themselves to whichever screen they're heading to.
+Gaugeshift is a [Decky Loader](https://decky.xyz) plugin for SteamOS machines you stream _from_, such as a Steam Machine or a docked Steam Deck. When a device starts streaming, Gaugeshift sets Steam's **Maximum Game Resolution** for that device. When the stream ends, it puts the setting back.
 
 <p align="center">
-  <img src="docs/images/panel-streaming.png" width="380" alt="The Gaugeshift panel in the Quick Access Menu while an iPhone is streaming: Maximum Game Resolution is set to 1920x1200 and will be restored to 1920x1080 afterwards. Below, each device has its own resolution.">
+  <img src="docs/images/panel-streaming.png" width="320" alt="The Gaugeshift panel while an iPhone is streaming: Maximum Game Resolution is set to 1920x1200 and will be restored to 1920x1080 afterwards. Each device has its own resolution, and new devices match their screen.">
 </p>
 
 ## Why
 
-Say your Steam Machine is plugged into a 4K TV. When you stream a game to a Steam Deck (a 16:10 screen) or a phone, the game still renders at the TV's resolution. Then the whole picture gets shrunk, letterboxed and squeezed down the network. That makes the machine work harder for a worse picture.
+If your machine is connected to a 4K TV, games streamed to a Steam Deck or a phone still render at 4K. The picture is then scaled down to fit the device, which costs performance and can add black bars.
 
-Steam already has a fix built in: **Settings → Display → Maximum Game Resolution**. But it's one global setting, so you'd have to change it by hand every time you switch between the TV and a handheld. Steam's menu also only offers resolutions that suit the connected display, so a 16:10 size like 1920x1200 may not even be on the list when the display is a 16:9 TV.
+Steam's **Settings → Display → Maximum Game Resolution** fixes this, but it's a single global setting you'd have to change every time you switch between the TV and another device. Steam's menu also only offers resolutions that suit the connected display, so 16:10 sizes like 1280x800 may be missing when it's a 16:9 TV.
 
-Gaugeshift switches the setting for you, per device, and accepts any resolution.
+Gaugeshift changes the setting automatically for each device, and accepts any resolution.
 
 ## Features
 
-- **Works out of the box.** A device streaming for the first time gets a resolution that **matches its own screen**: 1280x800 for a Steam Deck, or whatever size the device reports. You don't need to set anything up.
-- **A rule for each device.** You can change any device to a fixed resolution, **Native**, **Custom…** (any size, such as `2560x1080`), or **Don't change**.
-- **Restores what you had.** When a stream ends, Gaugeshift puts back the value the setting had before, not just "Default". If you change the setting yourself during a stream, it leaves your choice alone.
-- **Works with both kinds of streaming:**
-  - **Steam Link** (on a phone, tablet or TV), where you browse Big Picture and launch games from there.
-  - **Remote Play from another Steam client**, such as a Steam Deck choosing **Stream** on a game in its library. Gaugeshift catches these launches several seconds before the game starts.
-- **Survives crashes and restarts.** What to restore is saved to disk, so the setting still goes back to the right value if Steam, Decky or the machine restarts mid-stream.
-- **Applies changes straight away.** If you change a device's rule while it's streaming, the setting changes immediately.
-- **Never leaves the setting changed.** Turning the plugin off, disabling it, updating it or uninstalling it restores the original setting first.
+- **No setup needed.** A device streaming for the first time gets a resolution matching its own screen: 1280x800 for a Steam Deck, or the size the device reports.
+- **Per-device rules.** Set any device to match its screen, a fixed resolution, **Native**, a custom size, or **Don't change**.
+- **Restores your setting.** When a stream ends, the previous value comes back, not just "Default". If you change the setting yourself during a stream, Gaugeshift keeps your change.
+- **Both kinds of streaming:**
+  - **Steam Link** on a phone, tablet or TV.
+  - **Remote Play from another Steam device**, such as a Steam Deck choosing **Stream** on a game. Gaugeshift catches these launches before the game starts.
+- **Safe across restarts.** If Steam, Decky or the machine restarts mid-stream, the setting is still restored.
+- **Clear notifications.** When the setting changes, a notification shows the resolution, for example "Maximum Resolution: 1280x800".
 
 ## Install
 
-Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a URL:
+Gaugeshift isn't in the Decky Plugin Store. Install it from a URL:
 
-1. Open Decky's settings (Quick Access Menu → Decky tab → gear icon) and turn on **Developer mode**.
-2. Go to the **Developer** section, choose **Install Plugin from URL**, and enter:
+1. In Decky's settings (Quick Access Menu → Decky tab → gear icon), turn on **Developer mode**.
+2. In the **Developer** section, choose **Install Plugin from URL** and enter:
    ```
    https://github.com/murphmar/decky-gaugeshift/releases/latest/download/gaugeshift.zip
    ```
@@ -43,84 +40,80 @@ Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a 
 
 ## Use
 
-1. Stream as usual. Each new device gets the **New devices** setting, which is **Match their screen** unless you change it:
-   - **A Steam Deck** gets 1280x800 from its very first stream.
-   - **Other devices** report their screen size a couple of seconds after the stream starts, and Gaugeshift uses it from then on. A device that streamed before you installed Gaugeshift is recognized at once, because Steam's logs already hold its size.
-2. A notification shows the resolution games will use, such as "Maximum Resolution: 1280x800".
-3. To use something else for a device, open **Gaugeshift** in the Quick Access Menu and pick a different rule. For example, **steamdeck** → `1920x1200` renders sharper (1.5× the Deck's screen) at the cost of performance.
+Stream as usual. Each new device gets the **New devices** setting, which is **Match their screen** by default:
 
-Devices paired for Steam Link appear in the list straight away; other devices appear after their first stream. To remove one, choose **Forget this device…** at the bottom of its menu. Gaugeshift then forgets its rule and screen size. A device that's still paired with Steam Link stays listed until you unpair it in Steam's Remote Play settings.
+- **A Steam Deck** gets 1280x800 from its first stream.
+- **Other devices** report their screen size a couple of seconds after connecting, and Gaugeshift uses it from then on. Devices that streamed before Gaugeshift was installed are recognized immediately.
+
+To change a device's resolution, open **Gaugeshift** in the Quick Access Menu and pick a rule from its menu. For example, setting **steamdeck** to `1920x1200` gives a sharper picture at the cost of performance.
+
+To remove a device, choose **Forget this device…** at the bottom of its menu. Devices paired with Steam Link stay in the list until you unpair them in Steam's Remote Play settings.
 
 ### Good to know
 
-- **Games read the setting when they launch.** If a game is already running when a device connects, it keeps its current resolution until you restart it.
-- **Per-game overrides win.** If a game has its own **Game Resolution** set in its Properties, Steam uses that instead of the global setting.
-- **A brand-new device (other than a Steam Deck) launching a game with Stream.** The very first launch may start before its screen size is known, so that one game keeps the usual resolution. Every launch after that uses its screen size.
-- **Steam Decks are recognized by name.** SteamOS names a Deck `steamdeck`. If yours has another name, it gets its real screen size from its first stream instead.
-- **Remote launches pick a device in advance.** When a Steam client asks this machine to launch a game, Steam doesn't say which device asked until the stream connects, which is too late. So Gaugeshift applies the rule of the online device that streamed most recently, among those with a resolution to apply. When the stream connects, Gaugeshift checks the guess and corrects it if needed. If no stream follows within a minute, it undoes the change.
+- **Games read the setting when they launch.** A game that's already running keeps its resolution until you restart it.
+- **Per-game settings take priority.** If a game has its own **Game Resolution** in its Properties, Steam uses that instead.
+- **Steam Decks are recognized by name.** SteamOS names a Deck `steamdeck`. A Deck with a different name gets its size from its first stream instead.
+- **The first launch from a brand-new device may be missed.** A device other than a Steam Deck that launches a game with **Stream** before it has ever streamed may start that one game at the usual resolution. Later launches use its screen size.
+- **Remote launches are matched to a device in advance.** Steam only says which device launched a game once its stream connects, which is too late. Gaugeshift applies the rule of the online device that streamed most recently, then corrects it if the stream turns out to be a different device. If no stream follows within a minute, the change is undone.
 
 ### Warnings
 
-Gaugeshift shows a warning in its panel when something isn't working:
+If something isn't working, the panel shows a warning:
 
-| Warning                                       | What Gaugeshift does                                                                                                  |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Can't read Maximum Game Resolution            | Changes nothing, because it couldn't put the old value back afterwards.                                               |
-| Couldn't change the resolution                | Leaves the setting as it was.                                                                                         |
-| Couldn't put the resolution back              | Keeps trying on the next stream or restart. You can also press **Restore**, or set it yourself in Settings → Display. |
-| Launches from other devices can't be detected | Steam Link keeps working. Games launched from another Steam device may start before the resolution changes.           |
+| Warning                                       | What Gaugeshift does                                                                                      |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Can't read Maximum Game Resolution            | Changes nothing, since it couldn't restore the old value afterwards.                                      |
+| Couldn't change the resolution                | Leaves the setting as it was.                                                                             |
+| Couldn't put the resolution back              | Retries on the next stream or restart. You can also press **Restore**, or set it in Settings → Display.   |
+| Launches from other devices can't be detected | Steam Link still works. Games launched from another Steam device may start before the resolution changes. |
 
-Any of these probably means a Steam update changed something. Please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues/new/choose).
+These usually mean a Steam update changed something. Please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues/new/choose).
 
 ## How it works
 
-Gaugeshift listens to Steam's own Remote Play events to see which device is streaming. It reads Steam's streaming log for the screen size each device reports, and Steam's console log to catch launches requested by another Steam device a few seconds before the game starts. It changes the setting through Steam's own settings function, and saves what to restore _before_ changing anything.
+Gaugeshift listens to Steam's Remote Play events to see which device is streaming. It reads Steam's streaming log for each device's screen size, and Steam's console log to detect launches from other Steam devices early. It saves the current value before changing the setting.
 
-[ARCHITECTURE.md](ARCHITECTURE.md) explains the code in plain terms: what each part does, what happens in each situation, and why. None of the Steam functions Gaugeshift relies on are officially documented, so a Steam update could break something. If that happens, Gaugeshift warns you in its panel and leaves the setting alone.
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the code in detail. The Steam functions Gaugeshift relies on aren't officially documented, so a Steam update could break something. If that happens, Gaugeshift shows a warning and leaves the setting alone.
 
 ## Safety
 
-Gaugeshift doesn't need root, never uses the network, can't run other programs, and only touches one Steam setting, its own settings file, and two of Steam's logs (read-only). Every change it makes is undone. An automated check enforces these limits on every build. Releases are built on GitHub from the source code, and you can verify that a download matches its release. See [SECURITY.md](SECURITY.md) for the details.
+Gaugeshift doesn't need root, doesn't use the network and can't run other programs. It only touches one Steam setting, its own settings file, and two of Steam's logs (read-only). An automated check enforces this on every build, and releases can be verified against the source code. See [SECURITY.md](SECURITY.md).
 
 ## How this was made
 
-Gaugeshift was built by Mark with substantial help from an AI coding assistant (Claude, by Anthropic), which wrote most of the code under Mark's direction and review. That's why it isn't in the Decky Plugin Store, which doesn't accept AI-written code.
+Gaugeshift was built by Mark with an AI coding assistant (Claude, by Anthropic), which wrote most of the code under Mark's direction and review. For that reason it isn't eligible for the Decky Plugin Store, which doesn't accept AI-written code.
 
-We know AI-written plugins have a reputation for being hard to trust, so here is what was done about that:
+To make it trustworthy anyway:
 
-- **Every behavior is tested.** About 130 automated tests run on every change. They include randomized stress tests that try thousands of random sequences of events, and they're checked against deliberately broken versions of the code to make sure they catch real bugs. See [docs/TESTING.md](docs/TESTING.md).
-- **It's tested on real hardware** before every release, against a written checklist, with the results published.
-- **Its abilities are locked down** and checked automatically: see [Safety](#safety).
-- **The code is documented** so anyone can review it, and so it can be maintained without the tool that helped write it: see [ARCHITECTURE.md](ARCHITECTURE.md).
+- **About 200 automated tests** run on every change, including randomized stress tests. The tests were also run against deliberately broken versions of the code to confirm they catch real bugs. See [docs/TESTING.md](docs/TESTING.md).
+- **Each release is tested on real hardware** against a written checklist, with the results published.
+- **Its permissions are limited** and checked automatically. See [Safety](#safety).
+- **The code is documented** for review and maintenance. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
-If you find something wrong, please [open an issue](https://github.com/murphmar/decky-gaugeshift/issues/new/choose).
+## Support
 
-## Support and maintenance
-
-- **Last tested on:** SteamOS 3.10.0 (Preview) with the Steam client Beta of November 2026, and Decky Loader 3.3.1. The [test results](docs/TESTING.md#results) list the details for each release.
-- **Steam updates:** Steam updates can change the undocumented functions Gaugeshift relies on. Gaugeshift is designed to fail safely when that happens: it warns you and changes nothing. Fixes for breakage like this get priority.
-- **Problems:** please use the [bug report form](https://github.com/murphmar/decky-gaugeshift/issues/new/choose), and attach the Gaugeshift log it asks for.
-- **Security problems:** see [SECURITY.md](SECURITY.md#reporting-a-security-problem).
+- **Last tested on:** SteamOS 3.10.0 (Preview), Steam client Beta (November 2026), Decky Loader 3.3.1. See the [test results](docs/TESTING.md#results).
+- **Problems:** use the [bug report form](https://github.com/murphmar/decky-gaugeshift/issues/new/choose) and attach the Gaugeshift log.
+- **Security issues:** see [SECURITY.md](SECURITY.md#reporting-a-security-problem).
 
 ## Development
 
-You need Node.js 22, Python 3.11+ (for the backend tests), and `zip`. Run `corepack enable` once so `pnpm` is the exact version pinned in `package.json` (pnpm 9, which Decky's tooling expects).
+Requirements: Node.js 22, Python 3.11+ and `zip`. Run `corepack enable` once so `pnpm` matches the version pinned in `package.json` (pnpm 9, which Decky's tooling expects).
 
 ```sh
 pnpm install
-pnpm check            # types, formatting, tests (with coverage), build, safety check, audit
-pnpm coverage         # frontend tests with a coverage report
+pnpm check            # types, formatting, tests with coverage, build, safety check, audit
 pip install pytest pytest-cov ruff
 ruff check . && pytest tests/backend --cov=main
 ./package.sh          # writes out/gaugeshift.zip
 ```
 
 - `src/engine.ts` makes all the decisions and doesn't touch Steam directly. It's tested in `tests/frontend` against a simulated Steam.
-- `src/steam.ts` and `src/host.ts` connect the engine to Steam and to the backend.
-- `main.py` stores settings and watches Steam's logs (launches and screen sizes). It's tested in `tests/backend`.
-- [ARCHITECTURE.md](ARCHITECTURE.md) explains how it all fits together, and [docs/TESTING.md](docs/TESTING.md) describes the tests and the hardware checklist.
+- `src/steam.ts` and `src/host.ts` connect the engine to Steam and the backend.
+- `main.py` stores settings and reads Steam's logs. It's tested in `tests/backend`.
 
-Every push and pull request runs all the checks. To release, add the version to `CHANGELOG.md`, bump `version` in `package.json`, then push a tag such as `v0.5.0`. The release only builds if every check passes.
+Every push and pull request runs all checks. To release, add the version to `CHANGELOG.md`, update `version` in `package.json`, and push a matching tag such as `v0.6.0`.
 
 ## License
 
