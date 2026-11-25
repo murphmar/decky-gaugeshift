@@ -2,6 +2,17 @@
 
 All notable changes to Gaugeshift are listed here.
 
+## [0.6.0] - Unreleased
+
+### Added
+
+- **Match screen:** a device's resolution can now follow its own screen. Gaugeshift learns each device's screen size from what it reports when it streams, and assumes 1280x800 for a Steam Deck it hasn't heard from yet.
+- **New devices** setting: what a device gets the first time it streams. It defaults to **Match their screen**, so Gaugeshift works with no setup, and a new Steam Deck is covered from its very first launch.
+
+### Changed
+
+- Settings now save "Don't change" explicitly. When upgrading, devices that were already known keep their current behavior.
+
 ## [0.5.0] - 2026-11-25
 
 ### Changed

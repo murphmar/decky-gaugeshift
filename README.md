@@ -20,7 +20,8 @@ Gaugeshift switches the setting for you, per device, and accepts any resolution.
 
 ## Features
 
-- **A rule for each device.** Pick a resolution for each device that streams from this machine, or "Don't change". Choose from the common sizes, **Native**, or **Custom…** to type any size, such as `2560x1080`.
+- **Works out of the box.** A device streaming for the first time gets a resolution that **matches its own screen**: 1280x800 for a Steam Deck, or whatever size the device reports. You don't need to set anything up.
+- **A rule for each device.** You can change any device to a fixed resolution, **Native**, **Custom…** (any size, such as `2560x1080`), or **Don't change**.
 - **Restores what you had.** When a stream ends, Gaugeshift puts back the value the setting had before, not just "Default". If you change the setting yourself during a stream, it leaves your choice alone.
 - **Works with both kinds of streaming:**
   - **Steam Link** (on a phone, tablet or TV), where you browse Big Picture and launch games from there.
@@ -42,17 +43,21 @@ Gaugeshift is not in the Decky Plugin Store yet. Until it is, install it from a 
 
 ## Use
 
-1. Stream to the machine once from each device you use, so Gaugeshift learns its name. Devices paired for Steam Link show up straight away.
-2. Open **Gaugeshift** in the Quick Access Menu and pick a resolution for each device. For example:
-   - **steamdeck** → `1920x1200` (16:10, 1.5× the Deck's screen)
-   - **iPhone** → `1920x1080`
-3. Stream as usual. A notification tells you when Gaugeshift switches the resolution.
+1. Stream as usual. Each new device gets the **New devices** setting, which is **Match their screen** unless you change it:
+   - **A Steam Deck** gets 1280x800 from its very first stream.
+   - **Other devices** report their screen size a couple of seconds after the stream starts, and Gaugeshift uses it from then on.
+2. A notification shows the resolution games will use, such as "Maximum Resolution: 1280x800".
+3. To use something else for a device, open **Gaugeshift** in the Quick Access Menu and pick a different rule. For example, **steamdeck** → `1920x1200` renders sharper (1.5× the Deck's screen) at the cost of performance.
+
+Devices paired for Steam Link appear in the list straight away; other devices appear after their first stream.
 
 ### Good to know
 
 - **Games read the setting when they launch.** If a game is already running when a device connects, it keeps its current resolution until you restart it.
 - **Per-game overrides win.** If a game has its own **Game Resolution** set in its Properties, Steam uses that instead of the global setting.
-- **Remote launches pick a device in advance.** When a Steam client asks this machine to launch a game, Steam doesn't say which device asked until the stream connects, which is too late. So Gaugeshift applies the rule of the online device with a rule that streamed most recently. When the stream connects, Gaugeshift checks the guess and corrects it if needed. If no stream follows within a minute, it undoes the change.
+- **A brand-new device (other than a Steam Deck) launching a game with Stream.** The very first launch may start before its screen size is known, so that one game keeps the usual resolution. Every launch after that uses its screen size.
+- **Steam Decks are recognized by name.** SteamOS names a Deck `steamdeck`. If yours has another name, it gets its real screen size from its first stream instead.
+- **Remote launches pick a device in advance.** When a Steam client asks this machine to launch a game, Steam doesn't say which device asked until the stream connects, which is too late. So Gaugeshift applies the rule of the online device that streamed most recently, among those with a resolution to apply. When the stream connects, Gaugeshift checks the guess and corrects it if needed. If no stream follows within a minute, it undoes the change.
 
 ### Warnings
 
@@ -69,13 +74,13 @@ Any of these probably means a Steam update changed something. Please [open an is
 
 ## How it works
 
-Gaugeshift listens to Steam's own Remote Play events to see which device is streaming. It also reads Steam's console log to catch launches requested by another Steam device, a few seconds before the game starts. It changes the setting through Steam's own settings function, and saves what to restore _before_ changing anything.
+Gaugeshift listens to Steam's own Remote Play events to see which device is streaming. It reads Steam's streaming log for the screen size each device reports, and Steam's console log to catch launches requested by another Steam device a few seconds before the game starts. It changes the setting through Steam's own settings function, and saves what to restore _before_ changing anything.
 
 [ARCHITECTURE.md](ARCHITECTURE.md) explains the code in plain terms: what each part does, what happens in each situation, and why. None of the Steam functions Gaugeshift relies on are officially documented, so a Steam update could break something. If that happens, Gaugeshift warns you in its panel and leaves the setting alone.
 
 ## Safety
 
-Gaugeshift doesn't need root, never uses the network, can't run other programs, and only touches one Steam setting, its own settings file, and Steam's log (read-only). Every change it makes is undone. An automated check enforces these limits on every build. Releases are built on GitHub from the source code, and you can verify that a download matches its release. See [SECURITY.md](SECURITY.md) for the details.
+Gaugeshift doesn't need root, never uses the network, can't run other programs, and only touches one Steam setting, its own settings file, and two of Steam's logs (read-only). Every change it makes is undone. An automated check enforces these limits on every build. Releases are built on GitHub from the source code, and you can verify that a download matches its release. See [SECURITY.md](SECURITY.md) for the details.
 
 ## How this was made
 
@@ -112,7 +117,7 @@ ruff check . && pytest tests/backend --cov=main
 
 - `src/engine.ts` makes all the decisions and doesn't touch Steam directly. It's tested in `tests/frontend` against a simulated Steam.
 - `src/steam.ts` and `src/host.ts` connect the engine to Steam and to the backend.
-- `main.py` stores settings and watches Steam's log. It's tested in `tests/backend`.
+- `main.py` stores settings and watches Steam's logs (launches and screen sizes). It's tested in `tests/backend`.
 - [ARCHITECTURE.md](ARCHITECTURE.md) explains how it all fits together, and [docs/TESTING.md](docs/TESTING.md) describes the tests and the hardware checklist.
 
 Every push and pull request runs all the checks. To release, add the version to `CHANGELOG.md`, bump `version` in `package.json`, then push a tag such as `v0.5.0`. The release only builds if every check passes.

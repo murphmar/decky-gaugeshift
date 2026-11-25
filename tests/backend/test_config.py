@@ -19,10 +19,12 @@ def test_defaults_for_garbage(main):
 
 def test_keeps_valid_values(main):
     data = {
-        "version": 1,
+        "version": 2,
         "enabled": False,
-        "rules": {"steamdeck": "1920x1200", "TV": "Native"},
+        "newDevices": "None",
+        "rules": {"steamdeck": "1920x1200", "TV": "Native", "iPhone": "Match", "Tablet": "None"},
         "devices": {"steamdeck": 1795564389300, "iPhone": 0},
+        "screens": {"steamdeck": "1280x800", "iPhone": "2001x1125"},
         "session": {"device": "steamdeck", "previous": "Default", "applied": "1920x1200", "started": 10},
     }
     assert main.normalize_config(data) == data
@@ -30,7 +32,21 @@ def test_keeps_valid_values(main):
 
 @pytest.mark.parametrize(
     "value",
-    ["", "Default", "1920", "1920x", "x1080", "01920x1080", "1920x1080x2", "abc", " 1920x1080", 1920, None],
+    [
+        "",
+        "Default",
+        "match",
+        "none",
+        "1920",
+        "1920x",
+        "x1080",
+        "01920x1080",
+        "1920x1080x2",
+        "abc",
+        " 1920x1080",
+        1920,
+        None,
+    ],
 )
 def test_drops_invalid_rules(main, value):
     config = main.normalize_config({"rules": {"dev": value, "ok": "1280x800"}})
@@ -166,3 +182,52 @@ def test_migration_without_old_settings(main, decky):
     plugin = main.Plugin()
     run(plugin._migration())
     assert not os.path.exists(plugin._path)
+
+
+# ---- version 2: Match screen and the New devices default -------------------
+
+
+def test_new_devices_default_to_match(main):
+    assert main.default_config()["newDevices"] == "Match"
+    assert main.normalize_config({"version": 2})["newDevices"] == "Match"
+
+
+@pytest.mark.parametrize("value", ["Match", "None"])
+def test_keeps_new_devices_setting(main, value):
+    assert main.normalize_config({"version": 2, "newDevices": value})["newDevices"] == value
+
+
+@pytest.mark.parametrize("value", ["", "match", "Native", "1280x800", 3, None])
+def test_drops_invalid_new_devices_setting(main, value):
+    assert main.normalize_config({"version": 2, "newDevices": value})["newDevices"] == "Match"
+
+
+def test_drops_invalid_screens(main):
+    config = main.normalize_config(
+        {"version": 2, "screens": {"deck": "1280x800", "bad": "huge", "n": "Native", "": "1280x800", "x": 5}}
+    )
+    assert config["screens"] == {"deck": "1280x800"}
+
+
+def test_migration_keeps_known_devices_unchanged(main):
+    # Version 1 left devices without a rule alone; they must stay that way
+    # now that new devices match their screen by default.
+    old = {
+        "version": 1,
+        "rules": {"steamdeck": "1920x1200"},
+        "devices": {"steamdeck": 1795564389300, "iPhone": 1795564389300},
+    }
+    config = main.normalize_config(old)
+    assert config["rules"] == {"steamdeck": "1920x1200", "iPhone": "None"}
+    assert config["newDevices"] == "Match"
+    assert config["version"] == 2
+
+
+def test_migration_without_version_number(main):
+    config = main.normalize_config({"devices": {"iPhone": 5}})
+    assert config["rules"] == {"iPhone": "None"}
+
+
+def test_no_migration_for_version_2(main):
+    config = main.normalize_config({"version": 2, "devices": {"iPhone": 5}})
+    assert config["rules"] == {}

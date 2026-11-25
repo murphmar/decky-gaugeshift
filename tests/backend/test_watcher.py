@@ -94,7 +94,7 @@ def test_watch_loop_emits_events(main, decky, tmp_path):
 
     async def go():
         plugin = main.Plugin()
-        task = asyncio.ensure_future(plugin._watch_launches(str(log), interval=0.01))
+        task = asyncio.ensure_future(plugin._watch_logs(str(log), str(tmp_path / "streaming_log.txt"), interval=0.01))
         await asyncio.sleep(0.05)
         append(log, launch(292030, 9))
         await asyncio.sleep(0.05)
@@ -126,7 +126,7 @@ def test_watch_loop_survives_errors(main, decky, tmp_path, monkeypatch):
 
     async def go():
         plugin = main.Plugin()
-        task = asyncio.ensure_future(plugin._watch_launches(str(log), interval=0.01))
+        task = asyncio.ensure_future(plugin._watch_logs(str(log), str(tmp_path / "streaming_log.txt"), interval=0.01))
         await real_sleep(0.1)
         append(log, launch(1, 1))
         await real_sleep(0.1)
@@ -139,3 +139,99 @@ def test_watch_loop_survives_errors(main, decky, tmp_path, monkeypatch):
     asyncio.run(go())
     assert calls["n"] > 2
     assert ("launch_started", 1, 1) in decky.emitted
+
+
+# ---- screen sizes from the streaming log -----------------------------------
+
+STREAM_START = (
+    "[2026-11-24 20:19:18][783562.996443] Streaming started to {device} at 192.168.1.244:50998, "
+    "audio channels = 6, MTU = 1468\n"
+)
+SCREEN = "[2026-11-24 20:19:20][783565.1] CLIENT: Video size: 1280x720, output size: {size}, overlay size: {size}\n"
+
+
+def start(device):
+    return STREAM_START.format(device=device)
+
+
+def screen(size):
+    return SCREEN.format(size=size)
+
+
+def test_reports_each_streams_screen_once(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text("")
+    w = main.ScreenWatcher(str(log))
+    assert w.poll() == []
+    append(log, start("steamdeck") + screen("1280x800") + screen("1280x800") + "other line\n" + screen("1280x800"))
+    append(log, start("iPhone") + "something\n" + screen("2001x1125"))
+    assert w.poll() == [("steamdeck", "1280x800"), ("iPhone", "2001x1125")]
+    assert w.poll() == []
+
+
+def test_device_names_with_spaces(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text("")
+    w = main.ScreenWatcher(str(log))
+    w.poll()
+    append(log, start("Living Room TV") + screen("3840x2160"))
+    assert w.poll() == [("Living Room TV", "3840x2160")]
+
+
+def test_ignores_screen_lines_without_a_stream(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text("")
+    w = main.ScreenWatcher(str(log))
+    w.poll()
+    append(log, screen("1280x800"))
+    assert w.poll() == []
+
+
+def test_ignores_impossible_sizes(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text("")
+    w = main.ScreenWatcher(str(log))
+    w.poll()
+    append(log, start("odd") + screen("10x10") + screen("1280x800"))
+    assert w.poll() == [("odd", "1280x800")]
+
+
+def test_ignores_streams_before_start(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text(start("old") + screen("1280x800"))
+    w = main.ScreenWatcher(str(log))
+    assert w.poll() == []
+
+
+def test_screen_report_split_across_writes(main, tmp_path):
+    log = tmp_path / "streaming_log.txt"
+    log.write_text("")
+    w = main.ScreenWatcher(str(log))
+    w.poll()
+    line = screen("1280x800")
+    append(log, start("steamdeck") + line[:40])
+    assert w.poll() == []
+    append(log, line[40:])
+    assert w.poll() == [("steamdeck", "1280x800")]
+
+
+def test_watch_loop_emits_screens(main, decky, tmp_path):
+    console = tmp_path / "console_log.txt"
+    streaming = tmp_path / "streaming_log.txt"
+    console.write_text("")
+    streaming.write_text("")
+
+    async def go():
+        plugin = main.Plugin()
+        task = asyncio.ensure_future(plugin._watch_logs(str(console), str(streaming), interval=0.01))
+        await asyncio.sleep(0.05)
+        append(streaming, start("steamdeck") + screen("1280x800"))
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    asyncio.run(go())
+    assert decky.emitted == [("client_screen", "steamdeck", "1280x800")]

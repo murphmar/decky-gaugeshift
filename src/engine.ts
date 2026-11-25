@@ -3,7 +3,7 @@
 // comes through the `Host` interface; everything that happens to it arrives
 // through the `on…` methods.
 
-export const CONFIG_VERSION = 1;
+export const CONFIG_VERSION = 2;
 
 /** A change Gaugeshift made and must undo when the stream ends. */
 export interface Session {
@@ -17,15 +17,40 @@ export interface Session {
   started: number;
 }
 
+/**
+ * A device's rule:
+ * - "Match": the device's own screen size (learned from its first stream);
+ * - "None": don't change anything;
+ * - "Native": Steam's "Native" option;
+ * - "WIDTHxHEIGHT": that resolution.
+ */
+export type Rule = string;
+export const MATCH = "Match";
+export const NONE = "None";
+
+/** What a device without a rule of its own gets. */
+export type NewDevicesRule = typeof MATCH | typeof NONE;
+
 export interface Config {
   version: number;
   enabled: boolean;
-  /** Device name -> resolution ("1920x1200", "Native", ...). No entry = leave alone. */
-  rules: Record<string, string>;
+  newDevices: NewDevicesRule;
+  /** Device name -> its rule. Devices without one use `newDevices`. */
+  rules: Record<string, Rule>;
   /** Device name -> when it last streamed from this machine (ms since epoch). */
   devices: Record<string, number>;
+  /** Device name -> the screen size it reported ("1280x800"). */
+  screens: Record<string, string>;
   /** Present only while Gaugeshift has the setting changed. */
   session: Session | null;
+}
+
+/** Screen size assumed for a Steam Deck until it reports its own. */
+export const STEAM_DECK_SCREEN = "1280x800";
+
+/** SteamOS names a Steam Deck "steamdeck" unless its owner renames it. */
+export function looksLikeSteamDeck(name: string): boolean {
+  return /^steamdeck/i.test(name);
 }
 
 export interface RemoteDevice {
@@ -59,8 +84,14 @@ export type WarningKind =
 
 export interface DeviceView {
   name: string;
-  /** Resolution rule, or "" for "Don't change". */
-  rule: string;
+  /** The device's rule (its own, or the New devices default). */
+  rule: Rule;
+  /** Whether `rule` is the New devices default rather than the device's own. */
+  ruleIsDefault: boolean;
+  /** Screen size the device reported, or the one assumed for a Steam Deck. */
+  screen?: string;
+  /** `screen` is assumed (Steam Deck), not reported. */
+  screenAssumed: boolean;
   online: boolean;
   streaming: boolean;
   /** Last time it streamed from this machine (ms since epoch), if ever. */
@@ -85,7 +116,15 @@ export const LAUNCH_DETECTION_TIMEOUT_MS = 15_000;
 export const WRITE_ATTEMPTS = 3;
 
 export function defaultConfig(): Config {
-  return { version: CONFIG_VERSION, enabled: true, rules: {}, devices: {}, session: null };
+  return {
+    version: CONFIG_VERSION,
+    enabled: true,
+    newDevices: MATCH,
+    rules: {},
+    devices: {},
+    screens: {},
+    session: null,
+  };
 }
 
 /** "1920x1200", " 1920 X 1200 ", "1920*1200" -> "1920x1200"; null if invalid. */
@@ -101,9 +140,9 @@ export function parseResolution(text: string): string | null {
   return `${w}x${h}`;
 }
 
-/** A value Gaugeshift may set: "Native" or WIDTHxHEIGHT. */
+/** A valid rule: "Match", "None", "Native" or an exact WIDTHxHEIGHT. */
 export function isValidRule(value: string): boolean {
-  return value === "Native" || parseResolution(value) === value;
+  return value === MATCH || value === NONE || value === "Native" || parseResolution(value) === value;
 }
 
 const isOnline = (d: RemoteDevice) => d.status !== "" && d.status !== "Paired";
@@ -187,21 +226,47 @@ export class Engine {
     });
   }
 
-  /** Sets a device's rule; "" means "Don't change". */
-  setRule(device: string, resolution: string): Promise<void> {
+  /** Sets a device's rule ("Match", "None", "Native" or WIDTHxHEIGHT; "" also means "None"). */
+  setRule(device: string, rule: Rule): Promise<void> {
     return this.enqueue(async () => {
-      if (resolution) {
-        if (!isValidRule(resolution)) {
-          this.host.log("warning", `Ignoring invalid resolution ${JSON.stringify(resolution)}`);
-          return;
-        }
-        this.config.rules[device] = resolution;
-      } else {
-        delete this.config.rules[device];
+      const value = rule || NONE;
+      if (!isValidRule(value)) {
+        this.host.log("warning", `Ignoring invalid resolution ${JSON.stringify(rule)}`);
+        return;
       }
+      this.config.rules[device] = value;
       await this.save();
-      this.host.log("info", `Rule for ${device}: ${resolution || "don't change"}`);
+      this.host.log("info", `Rule for ${device}: ${value}`);
       if (device === this.streamingTo) await this.applyRule(device, "rule changed");
+    });
+  }
+
+  /** Sets what devices without a rule of their own get. */
+  setNewDevices(rule: NewDevicesRule): Promise<void> {
+    return this.enqueue(async () => {
+      if (rule !== MATCH && rule !== NONE) return;
+      this.config.newDevices = rule;
+      await this.save();
+      this.host.log("info", `New devices: ${rule}`);
+      if (this.streamingTo && this.config.rules[this.streamingTo] === undefined) {
+        await this.applyRule(this.streamingTo, "New devices setting changed");
+      }
+    });
+  }
+
+  /** A device reported its screen size (it does a moment after its stream starts). */
+  onClientScreen(device: string, size: string): Promise<void> {
+    return this.enqueue(async () => {
+      if (parseResolution(size) !== size) {
+        this.host.log("warning", `Ignoring odd screen size ${JSON.stringify(size)} from ${device}`);
+        return;
+      }
+      if (this.config.screens[device] !== size) {
+        this.config.screens[device] = size;
+        await this.save();
+        this.host.log("info", `${device} has a ${size} screen`);
+      }
+      if (device === this.streamingTo) await this.applyRule(device, `${device} reported its screen`);
     });
   }
 
@@ -209,6 +274,7 @@ export class Engine {
     return this.enqueue(async () => {
       delete this.config.rules[device];
       delete this.config.devices[device];
+      delete this.config.screens[device];
       await this.save();
       if (device === this.streamingTo) await this.applyRule(device, "device forgotten");
     });
@@ -266,9 +332,14 @@ export class Engine {
       .sort((a, b) => a.localeCompare(b))
       .map((name) => {
         const steam = this.devices.find((d) => d.name === name);
+        const reported = this.config.screens[name];
+        const assumed = !reported && looksLikeSteamDeck(name);
         return {
           name,
-          rule: this.config.rules[name] ?? "",
+          rule: this.ruleFor(name),
+          ruleIsDefault: this.config.rules[name] === undefined,
+          screen: reported ?? (assumed ? STEAM_DECK_SCREEN : undefined),
+          screenAssumed: assumed,
           online: name === this.streamingTo || (steam ? isOnline(steam) : false),
           streaming: name === this.streamingTo,
           lastSeen: this.config.devices[name],
@@ -372,8 +443,28 @@ export class Engine {
     if (clientName) await this.onConnected(clientName);
   }
 
+  private ruleFor(device: string): Rule {
+    return this.config.rules[device] ?? this.config.newDevices;
+  }
+
+  /**
+   * The resolution to use for `device`, if any. `waiting` means its rule is
+   * "Match" but its screen size isn't known yet.
+   */
+  private targetFor(device: string): { target?: string; waiting?: boolean } {
+    if (!this.config.enabled) return {};
+    const rule = this.ruleFor(device);
+    if (rule === NONE) return {};
+    if (rule !== MATCH) return { target: rule };
+    const screen = this.config.screens[device] ?? (looksLikeSteamDeck(device) ? STEAM_DECK_SCREEN : undefined);
+    return screen ? { target: screen } : { waiting: true };
+  }
+
   private async onConnected(device: string) {
     this.config.devices[device] = this.host.now();
+    // A new device gets the New devices rule as its own, so the panel shows
+    // it and later changes to the default don't affect it.
+    if (this.config.rules[device] === undefined) this.config.rules[device] = this.config.newDevices;
     await this.save();
     await this.applyRule(device, `${device} connected`);
   }
@@ -393,8 +484,7 @@ export class Engine {
     }
     if (this.streamingTo || !this.config.enabled) return;
 
-    const rules = this.config.rules;
-    const candidates = this.devices.filter((d) => isOnline(d) && rules[d.name]);
+    const candidates = this.devices.filter((d) => isOnline(d) && this.targetFor(d.name).target);
     if (candidates.length === 0) {
       this.host.log("info", `App ${appId} launched remotely; no online device has a rule`);
       return;
@@ -422,9 +512,13 @@ export class Engine {
 
   /** Makes the setting match the rule for `device`. */
   private async applyRule(device: string, reason: string) {
-    const target = this.config.enabled ? this.config.rules[device] : undefined;
+    const { target, waiting } = this.targetFor(device);
     const session = this.config.session;
 
+    if (waiting) {
+      this.host.log("info", `${reason}; waiting for ${device} to report its screen size`);
+      return;
+    }
     if (!target) {
       if (session) await this.restore(`${reason}; no rule for ${device}`);
       else this.host.log("info", `${reason}; no rule, leaving resolution alone`);

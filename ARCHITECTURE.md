@@ -4,7 +4,7 @@ This is a guide to the code: what each part does, how they fit together, and why
 
 ## The idea in one paragraph
 
-Steam has a setting called **Maximum Game Resolution**: games launched while it's set won't run above that resolution. Gaugeshift watches for devices that start streaming from this machine. When one does, it changes that setting to the resolution you picked for that device, after first saving the current value. When the stream ends, it puts the saved value back. Everything else in the code exists to make those two steps reliable.
+Steam has a setting called **Maximum Game Resolution**: games launched while it's set won't run above that resolution. Gaugeshift watches for devices that start streaming from this machine. When one does, it changes that setting to that device's resolution, after first saving the current value. By default, a device's resolution matches its own screen. Gaugeshift learns the size from what each device reports, and assumes 1280x800 for a Steam Deck it hasn't heard from yet. When the stream ends, it puts the saved value back. Everything else in the code exists to make those two steps reliable.
 
 ## The parts
 
@@ -15,6 +15,7 @@ flowchart LR
     UI["Launches from<br/>Steam's own UI"]
     SET["Maximum Game<br/>Resolution setting"]
     LOG["console_log.txt"]
+    SLOG["streaming_log.txt"]
   end
 
   subgraph Frontend["Frontend (runs inside Steam)"]
@@ -26,7 +27,7 @@ flowchart LR
 
   subgraph Backend["Backend (main.py, Python)"]
     STORE["Settings storage"]
-    WATCH["Log watcher"]
+    WATCH["Log watchers"]
   end
 
   RP --> ADAPTER
@@ -37,18 +38,27 @@ flowchart LR
   PANEL -- "your choices" --> ENGINE
   ENGINE <-- "save / load" --> STORE
   LOG --> WATCH -- "a launch started" --> HOST
+  SLOG --> WATCH -- "a device's screen size" --> HOST
 ```
 
-| File                      | What it does                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/engine.ts`           | **Makes every decision.** It receives events ("iPhone connected", "a launch started", "the user picked 1920x1200") and decides what to do. It never talks to Steam directly. Everything it needs, like reading the setting, changing it, saving or setting a timer, it asks for through a small interface called `Host`. That's what makes it testable: the tests give it a pretend Steam. |
-| `src/steam.ts`            | **Talks to Steam.** It contains small wrappers around the Steam functions Gaugeshift uses, and the code that encodes a setting change the way Steam expects.                                                                                                                                                                                                                               |
-| `src/host.ts`             | **Connects things.** It gives the engine the real Steam (through `steam.ts`) and the real backend, and passes Steam's events to it.                                                                                                                                                                                                                                                        |
-| `src/index.tsx`           | **The panel** in the Quick Access Menu: the on/off switch, the status, warnings, and a resolution menu for each device.                                                                                                                                                                                                                                                                    |
-| `main.py`                 | **The backend**, which runs as a separate Python process: <br>• **Settings storage:** it saves your rules and the "what to restore" record to a file. It checks everything it's given and writes the file in a way that can't leave it half-written. <br>• **Log watcher:** it reads Steam's console log and reports each game launch as it starts.                                        |
-| `scripts/check_safety.py` | Fails the build if Gaugeshift ever gains abilities it shouldn't have, such as root, network access or running programs. See [SECURITY.md](SECURITY.md).                                                                                                                                                                                                                                    |
+| File                      | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/engine.ts`           | **Makes every decision.** It receives events ("iPhone connected", "a launch started", "the user picked 1920x1200") and decides what to do. It never talks to Steam directly. Everything it needs, like reading the setting, changing it, saving or setting a timer, it asks for through a small interface called `Host`. That's what makes it testable: the tests give it a pretend Steam.                                                                                                                                           |
+| `src/steam.ts`            | **Talks to Steam.** It contains small wrappers around the Steam functions Gaugeshift uses, and the code that encodes a setting change the way Steam expects.                                                                                                                                                                                                                                                                                                                                                                         |
+| `src/host.ts`             | **Connects things.** It gives the engine the real Steam (through `steam.ts`) and the real backend, and passes Steam's events to it.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `src/index.tsx`           | **The panel** in the Quick Access Menu: the on/off switch, the status, warnings, and a resolution menu for each device.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `main.py`                 | **The backend**, which runs as a separate Python process: <br>• **Settings storage:** it saves your rules and the "what to restore" record to a file. It checks everything it's given and writes the file in a way that can't leave it half-written. <br>• **Log watchers:** they read Steam's console log and report each game launch as it starts. They also read Steam's streaming log and report each device's screen size. Both use one shared `LogFollower`, which copes with Steam rotating, truncating or deleting its logs. |
+| `scripts/check_safety.py` | Fails the build if Gaugeshift ever gains abilities it shouldn't have, such as root, network access or running programs. See [SECURITY.md](SECURITY.md).                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## What happens when…
+
+### …a device streams for the first time
+
+1. Steam reports a stream to the device. It has no rule yet, so it gets the **New devices** rule (Match their screen, unless changed), saved as its own. Later changes to the default don't affect it.
+2. **Match** needs a screen size:
+   - **A device called `steamdeck`** (SteamOS's default name) is assumed to be 1280x800, so it's covered at once.
+   - **For anything else**, the engine waits.
+3. A couple of seconds later, the device reports its screen size in Steam's streaming log. The backend passes it on, the engine remembers it for next time, and applies it now. If the Deck's assumed size was right, nothing changes.
 
 ### …a phone connects with Steam Link
 
@@ -65,7 +75,7 @@ This case is harder. The Deck asks this machine to start the game, and Steam onl
 
 1. Steam writes a line to its console log the moment any launch begins, several seconds before the game starts. The backend's **log watcher** sees it and tells the engine.
 2. Launches started on this machine's own screen, or over Steam Link, go through Steam's UI, which reports them separately. The engine waits a moment for that report. If it doesn't come, and nothing is streaming yet, the launch must have come from another device.
-3. Steam doesn't say _which_ device asked. The engine picks the **online device with a rule** that streamed most recently, and applies its rule straight away.
+3. Steam doesn't say _which_ device asked. The engine picks the **online device** that streamed most recently, among those with a resolution to apply. That includes a never-seen Steam Deck, through the 1280x800 assumption. It applies that device's rule straight away.
 4. When the stream connects a few seconds later, Steam names the device. If the guess was right, nothing changes. If it was wrong, the engine switches to the right device's rule. If no stream follows within a minute, it undoes the change.
 
 ### …Steam, Decky or the machine restarts mid-stream
@@ -100,14 +110,15 @@ When Gaugeshift is turned off, disabled, updated or uninstalled, it restores the
 
 None of these are officially documented by Valve, so a Steam update could change them. Each is used in one place, so a fix would be small:
 
-| What                                                                                | Where                            | If it changes…                                                    |
-| ----------------------------------------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------- |
-| `settingsStore.m_ClientSettings.gamescope_game_resolution_global`                   | `steam.ts` (`getGameResolution`) | Gaugeshift can't read the setting: it warns and changes nothing   |
-| `SteamClient.Settings.SetSetting` with field number 21012                           | `steam.ts` (`setGameResolution`) | Changes aren't confirmed: it warns                                |
-| `SteamClient.RemotePlay.RegisterForSettingsChanges` (`strStreamingClientName`)      | `steam.ts`                       | Streams aren't detected                                           |
-| `SteamClient.RemotePlay.RegisterForDevicesChanges`                                  | `steam.ts`                       | Deck-style launches can't pick a device                           |
-| `SteamClient.Apps.RegisterForGameActionStart`                                       | `steam.ts`                       | Local launches may be mistaken for remote ones                    |
-| The console-log line `GameAction [AppID …, ActionID …] : LaunchApp changed task to` | `main.py` (`LAUNCH_RE`)          | The health check warns that Deck-style launches can't be detected |
+| What                                                                                                       | Where                                      | If it changes…                                                                                           |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `settingsStore.m_ClientSettings.gamescope_game_resolution_global`                                          | `steam.ts` (`getGameResolution`)           | Gaugeshift can't read the setting: it warns and changes nothing                                          |
+| `SteamClient.Settings.SetSetting` with field number 21012                                                  | `steam.ts` (`setGameResolution`)           | Changes aren't confirmed: it warns                                                                       |
+| `SteamClient.RemotePlay.RegisterForSettingsChanges` (`strStreamingClientName`)                             | `steam.ts`                                 | Streams aren't detected                                                                                  |
+| `SteamClient.RemotePlay.RegisterForDevicesChanges`                                                         | `steam.ts`                                 | Deck-style launches can't pick a device                                                                  |
+| `SteamClient.Apps.RegisterForGameActionStart`                                                              | `steam.ts`                                 | Local launches may be mistaken for remote ones                                                           |
+| The console-log line `GameAction [AppID …, ActionID …] : LaunchApp changed task to`                        | `main.py` (`LAUNCH_RE`)                    | The health check warns that Deck-style launches can't be detected                                        |
+| The streaming-log lines `Streaming started to <device> at …` and `CLIENT: Video size: …, output size: WxH` | `main.py` (`STREAM_START_RE`, `SCREEN_RE`) | **Match screen** keeps waiting for sizes it never gets, except for Steam Decks, which still get 1280x800 |
 
 ## Working on the code
 

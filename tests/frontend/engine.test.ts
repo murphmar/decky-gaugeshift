@@ -452,10 +452,10 @@ describe("view", () => {
     ]);
     await engine.onStreamState(PHONE);
     expect(engine.view().devices.map((d) => [d.name, d.rule, d.online, d.streaming])).toEqual([
-      ["iPhone", "", true, true],
-      ["Old", "", false, false],
+      ["iPhone", "None", true, true],
+      ["Old", "None", false, false],
       ["steamdeck", "1920x1200", true, false],
-      ["Tablet", "", false, false],
+      ["Tablet", "None", false, false],
     ]);
   });
 

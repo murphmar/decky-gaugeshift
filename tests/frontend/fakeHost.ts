@@ -79,6 +79,11 @@ export class FakeHost implements Host {
     this.time = end;
   }
 
+  /** Cancels every timer, as happens when the frontend crashes or Steam restarts. */
+  clearAllTimers() {
+    this.timers = [];
+  }
+
   get pendingTimers() {
     return this.timers.length;
   }
@@ -106,7 +111,9 @@ export async function setup(
 ): Promise<Setup> {
   const host = new FakeHost();
   if (options.resolution !== undefined) host.resolution = options.resolution;
-  const engine = new Engine(host, { ...defaultConfig(), ...options.config });
+  // Unless a test says otherwise, devices without a rule are left alone, so
+  // each test only involves the devices it gives rules to.
+  const engine = new Engine(host, { ...defaultConfig(), newDevices: "None", ...options.config });
   await engine.onStreamState(options.streaming ?? "");
   return { host, engine };
 }

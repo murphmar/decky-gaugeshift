@@ -46,6 +46,10 @@ export async function startEngine(): Promise<{ engine: Engine; disconnect: () =>
     engine.onLogLaunch(appId, actionId);
   });
   unsubs.push(() => removeEventListener("launch_started", listener));
+  const screenListener = addEventListener<[device: string, size: string]>("client_screen", (device, size) => {
+    engine.onClientScreen(device, size);
+  });
+  unsubs.push(() => removeEventListener("client_screen", screenListener));
   // Subscribe to the stream state last: its first report triggers recovery.
   unsubs.push(onStreamStateChanged(({ clientName }) => engine.onStreamState(clientName)));
   return { engine, disconnect: () => unsubs.forEach((u) => u()) };

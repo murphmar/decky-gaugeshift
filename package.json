@@ -1,6 +1,6 @@
 {
   "name": "decky-gaugeshift",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Decky plugin: per-device Maximum Game Resolution for Remote Play and Steam Link, restored when the stream ends.",
   "type": "module",
   "scripts": {

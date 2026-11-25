@@ -25,6 +25,8 @@ jobs:
       - run: pnpm format:check
       - name: Tests, including randomized stress tests (with coverage minimums)
         run: pnpm coverage
+        env:
+          STRESS_RUNS: 10000 # random event sequences per stress test
       - run: pnpm build
       - name: Safety check (no root, network, subprocesses or runtime code loading)
         run: python3 scripts/check_safety.py

@@ -12,10 +12,9 @@ import {
 import { definePlugin } from "@decky/api";
 import { useEffect, useState } from "react";
 import { FaExchangeAlt } from "react-icons/fa";
-import { Engine, ViewState, parseResolution } from "./engine";
+import { DeviceView, Engine, MATCH, NONE, NewDevicesRule, ViewState, parseResolution } from "./engine";
 import { startEngine, steamHost } from "./host";
 
-const NO_CHANGE = "";
 const CUSTOM = "__custom__";
 
 const PRESETS = [
@@ -68,8 +67,30 @@ function statusText(v: ViewState): string {
     return session ? `Not streaming (waiting to restore ${session.previous})` : "Not streaming";
   }
   if (session) return `Streaming to ${v.streamingTo}: ${session.applied}, restores ${session.previous}`;
+  const device = v.devices.find((d) => d.name === v.streamingTo);
+  if (v.config.enabled && device?.rule === MATCH && !device.screen) {
+    return `Streaming to ${v.streamingTo}: waiting for its screen size`;
+  }
   return `Streaming to ${v.streamingTo}: no change`;
 }
+
+function matchLabel(d: DeviceView): string {
+  if (!d.screen) return "Match screen (learned when it streams)";
+  return d.screenAssumed ? `Match screen (${d.screen}, Steam Deck)` : `Match screen (${d.screen})`;
+}
+
+function deviceDescription(d: DeviceView): string | undefined {
+  const parts: string[] = [];
+  if (d.streaming) parts.push("Streaming now");
+  else if (d.online) parts.push("Online");
+  if (d.ruleIsDefault) parts.push("using the New devices setting");
+  return parts.length ? parts.join(" · ") : undefined;
+}
+
+const NEW_DEVICE_OPTIONS: { data: NewDevicesRule; label: string }[] = [
+  { data: MATCH, label: "Match their screen" },
+  { data: NONE, label: "Don't change" },
+];
 
 function Content({ engine }: { engine: Engine | null }) {
   const [view, setView] = useState<ViewState | null>(engine?.view() ?? null);
@@ -88,11 +109,12 @@ function Content({ engine }: { engine: Engine | null }) {
   const { config } = view;
   const session = config.session;
 
-  const optionsFor = (rule: string) => {
+  const optionsFor = (d: DeviceView) => {
     const list = [...PRESETS];
-    if (rule && !list.includes(rule)) list.push(rule);
+    if (d.rule !== MATCH && d.rule !== NONE && !list.includes(d.rule)) list.push(d.rule);
     return [
-      { data: NO_CHANGE, label: "Don't change" },
+      { data: MATCH, label: matchLabel(d) },
+      { data: NONE, label: "Don't change" },
       ...list.map((r) => ({ data: r, label: r })),
       { data: CUSTOM, label: "Custom…" },
     ];
@@ -103,7 +125,7 @@ function Content({ engine }: { engine: Engine | null }) {
       showModal(
         <CustomResolutionModal
           device={name}
-          initial={rule && rule !== "Native" ? rule : ""}
+          initial={parseResolution(rule) ? rule : ""}
           onSave={(v) => engine.setRule(name, v)}
         />,
       );
@@ -157,13 +179,27 @@ function Content({ engine }: { engine: Engine | null }) {
               layout="below"
               menuLabel={`Resolution for ${d.name}`}
               label={d.name}
-              description={d.streaming ? "Streaming now" : d.online ? "Online" : undefined}
-              rgOptions={optionsFor(d.rule)}
+              description={deviceDescription(d)}
+              rgOptions={optionsFor(d)}
               selectedOption={d.rule}
               onChange={(o) => onPick(d.name, d.rule, String(o.data))}
             />
           </PanelSectionRow>
         ))}
+      </PanelSection>
+
+      <PanelSection title="New devices">
+        <PanelSectionRow>
+          <DropdownItem
+            layout="below"
+            label="The first time a device streams"
+            description="Match their screen uses the size the device reports (1280x800 for a Steam Deck)."
+            menuLabel="New devices"
+            rgOptions={NEW_DEVICE_OPTIONS}
+            selectedOption={config.newDevices}
+            onChange={(o) => engine.setNewDevices(o.data as NewDevicesRule)}
+          />
+        </PanelSectionRow>
       </PanelSection>
 
       <PanelSection>
