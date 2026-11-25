@@ -11,6 +11,10 @@ updates:
       # Major updates of Decky's own libraries need checking on hardware first.
       - dependency-name: "@decky/*"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 drops options this project's config (and Decky's build
+      # tooling) still relies on; move to it deliberately, not automatically.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
       # Decky's tooling expects pnpm 9 (lockfile version 9.0).
       - dependency-name: "pnpm"
         update-types: ["version-update:semver-major"]
